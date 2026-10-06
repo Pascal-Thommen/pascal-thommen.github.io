@@ -1,0 +1,147 @@
+/* Custom Clean-Tech Styling for Pascal Thommen Portfolio */
+
+:root {
+    --theme: #fdfdfd;
+    --entry: #ffffff;
+    --primary: #111827;
+    --secondary: #4b5563;
+    --tertiary: #f3f4f6;
+    --content: #1f2937;
+    --hljs-bg: #f9fafb;
+    --code-bg: #f3f4f6;
+    --border: #e5e7eb;
+    --radius: 8px;
+}
+
+.dark {
+    --theme: #0f172a;
+    --entry: #1e293b;
+    --primary: #f8fafc;
+    --secondary: #94a3b8;
+    --tertiary: #1e293b;
+    --content: #e2e8f0;
+    --hljs-bg: #1e293b;
+    --code-bg: #1e293b;
+    --border: #334155;
+}
+
+/* Profile Mode enhancements */
+.profile img {
+    border: 3px solid var(--border);
+    box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.profile img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.12);
+}
+
+.profile .profile_inner h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+}
+
+.profile .profile_inner span {
+    font-size: 1.05rem;
+    color: var(--secondary);
+    max-width: 580px;
+    line-height: 1.5;
+}
+
+/* Button enhancements */
+.button {
+    font-weight: 500;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.button:hover {
+    border-color: var(--secondary);
+    transform: translateY(-1px);
+}
+
+/* Project Card Grid */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.project-card {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+}
+
+.project-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.project-card p {
+    color: var(--secondary);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0.5rem 0 1rem 0;
+    flex-grow: 1;
+}
+
+.project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+}
+
+.project-tag {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    background: var(--tertiary);
+    color: var(--secondary);
+    font-weight: 500;
+}
+
+.project-links {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+}
+
+.project-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #2563eb;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.dark .project-link {
+    color: #60a5fa;
+}
+
+.project-link:hover {
+    text-decoration: underline;
+}

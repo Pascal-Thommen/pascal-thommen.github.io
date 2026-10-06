@@ -1,0 +1,136 @@
+baseURL: "https://pascal-thommen.github.io/"
+title: "Pascal Thommen"
+theme: "PaperMod"
+defaultContentLanguage: "de"
+defaultContentLanguageInSubdir: false
+enableRobotsTXT: true
+copyright: "Pascal Thommen"
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+
+params:
+  env: "production"
+  defaultTheme: "auto"
+  disableThemeToggle: false
+  disableLangToggle: false
+  displayFullLangName: true
+  ShowReadingTime: false
+  ShowShareButtons: false
+  ShowPostNavLinks: false
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  disableSpecial1stPost: true
+  hideMeta: true
+  label:
+    text: "Pascal Thommen"
+  socialIcons:
+    - name: "linkedin"
+      url: "https://www.linkedin.com/in/pascal-thommen/"
+      title: "LinkedIn"
+    - name: "github"
+      url: "https://github.com/Pascal-Thommen"
+      title: "GitHub"
+
+languages:
+  de:
+    languageName: "Deutsch"
+    label: "Deutsch"
+    languageCode: "de-DE"
+    locale: "de-DE"
+    weight: 1
+    title: "Pascal Thommen | Wirtschaftsinformatiker"
+    params:
+      profileMode:
+        enabled: true
+        title: "Pascal Thommen"
+        subtitle: "Wirtschaftsinformatiker @ UPA | ERP-Architektur & AI-driven System Engineering"
+        imageUrl: "images/pascal_linkedin_profile.jpg"
+        imageWidth: 160
+        imageHeight: 160
+        imageTitle: "Pascal Thommen"
+        buttons:
+          - name: "Projekte"
+            url: "/projects/"
+          - name: "Über mich"
+            url: "/about/"
+          - name: "LinkedIn"
+            url: "https://www.linkedin.com/in/pascal-thommen/"
+    menu:
+      main:
+        - identifier: "projects"
+          name: "Projekte"
+          url: "/projects/"
+          weight: 10
+        - identifier: "about"
+          name: "Über mich"
+          url: "/about/"
+          weight: 20
+  en:
+    languageName: "English"
+    label: "English"
+    languageCode: "en-US"
+    locale: "en-US"
+    weight: 2
+    title: "Pascal Thommen | Business Informatics"
+    params:
+      profileMode:
+        enabled: true
+        title: "Pascal Thommen"
+        subtitle: "Business Informatics Specialist @ UPA | ERP Architecture & AI-driven System Engineering"
+        imageUrl: "images/pascal_linkedin_profile.jpg"
+        imageWidth: 160
+        imageHeight: 160
+        imageTitle: "Pascal Thommen"
+        buttons:
+          - name: "Projects"
+            url: "/en/projects/"
+          - name: "About"
+            url: "/en/about/"
+          - name: "LinkedIn"
+            url: "https://www.linkedin.com/in/pascal-thommen/"
+    menu:
+      main:
+        - identifier: "projects"
+          name: "Projects"
+          url: "/en/projects/"
+          weight: 10
+        - identifier: "about"
+          name: "About"
+          url: "/en/about/"
+          weight: 20
+  es:
+    languageName: "Español"
+    label: "Español"
+    languageCode: "es-PY"
+    locale: "es-PY"
+    weight: 3
+    title: "Pascal Thommen | Informática Empresarial"
+    params:
+      profileMode:
+        enabled: true
+        title: "Pascal Thommen"
+        subtitle: "Informático Empresarial @ UPA | Arquitectura ERP e Ingeniería de Sistemas con IA"
+        imageUrl: "images/pascal_linkedin_profile.jpg"
+        imageWidth: 160
+        imageHeight: 160
+        imageTitle: "Pascal Thommen"
+        buttons:
+          - name: "Proyectos"
+            url: "/es/projects/"
+          - name: "Sobre mí"
+            url: "/es/about/"
+          - name: "LinkedIn"
+            url: "https://www.linkedin.com/in/pascal-thommen/"
+    menu:
+      main:
+        - identifier: "projects"
+          name: "Proyectos"
+          url: "/es/projects/"
+          weight: 10
+        - identifier: "about"
+          name: "Sobre mí"
+          url: "/es/about/"
+          weight: 20
