@@ -145,3 +145,24 @@
 .project-link:hover {
     text-decoration: underline;
 }
+
+.project-badge-private {
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--tertiary);
+    color: var(--secondary);
+    border: 1px solid var(--border);
+    letter-spacing: 0.01em;
+}
+
+.mermaid {
+    text-align: center;
+    margin: 1.75rem 0;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    overflow-x: auto;
+}

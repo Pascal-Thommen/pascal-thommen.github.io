@@ -36,9 +36,7 @@ params:
 
 languages:
   de:
-    languageName: "Deutsch"
     label: "Deutsch"
-    languageCode: "de-DE"
     locale: "de-DE"
     weight: 1
     title: "Pascal Thommen | Wirtschaftsinformatiker"
@@ -54,24 +52,26 @@ languages:
         buttons:
           - name: "Projekte"
             url: "/projects/"
+          - name: "Artikel"
+            url: "/posts/"
           - name: "Über mich"
             url: "/about/"
-          - name: "LinkedIn"
-            url: "https://www.linkedin.com/in/pascal-thommen/"
     menu:
       main:
         - identifier: "projects"
           name: "Projekte"
           url: "/projects/"
           weight: 10
+        - identifier: "posts"
+          name: "Artikel"
+          url: "/posts/"
+          weight: 20
         - identifier: "about"
           name: "Über mich"
           url: "/about/"
-          weight: 20
+          weight: 30
   en:
-    languageName: "English"
     label: "English"
-    languageCode: "en-US"
     locale: "en-US"
     weight: 2
     title: "Pascal Thommen | Business Informatics"
@@ -87,24 +87,26 @@ languages:
         buttons:
           - name: "Projects"
             url: "/en/projects/"
+          - name: "Articles"
+            url: "/en/posts/"
           - name: "About"
             url: "/en/about/"
-          - name: "LinkedIn"
-            url: "https://www.linkedin.com/in/pascal-thommen/"
     menu:
       main:
         - identifier: "projects"
           name: "Projects"
           url: "/en/projects/"
           weight: 10
+        - identifier: "posts"
+          name: "Articles"
+          url: "/en/posts/"
+          weight: 20
         - identifier: "about"
           name: "About"
           url: "/en/about/"
-          weight: 20
+          weight: 30
   es:
-    languageName: "Español"
     label: "Español"
-    languageCode: "es-PY"
     locale: "es-PY"
     weight: 3
     title: "Pascal Thommen | Informática Empresarial"
@@ -120,17 +122,21 @@ languages:
         buttons:
           - name: "Proyectos"
             url: "/es/projects/"
+          - name: "Artículos"
+            url: "/es/posts/"
           - name: "Sobre mí"
             url: "/es/about/"
-          - name: "LinkedIn"
-            url: "https://www.linkedin.com/in/pascal-thommen/"
     menu:
       main:
         - identifier: "projects"
           name: "Proyectos"
           url: "/es/projects/"
           weight: 10
+        - identifier: "posts"
+          name: "Artículos"
+          url: "/es/posts/"
+          weight: 20
         - identifier: "about"
           name: "Sobre mí"
           url: "/es/about/"
-          weight: 20
+          weight: 30

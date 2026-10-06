@@ -30,7 +30,7 @@ Overview of selected open-source repositories and development projects focusing 
 
   <div class="project-card">
     <div>
-      <h3>SARIC</h3>
+      <h3><span>SARIC</span> <span class="project-badge-private">[Private (GitHub)]</span></h3>
       <div class="project-tags">
         <span class="project-tag">Python</span>
         <span class="project-tag">Streamlit</span>
@@ -41,14 +41,14 @@ Overview of selected open-source repositories and development projects focusing 
     </div>
     <div class="project-links">
       <a class="project-link" href="https://github.com/Pascal-Thommen/saric" target="_blank" rel="noopener noreferrer">
-        GitHub Repository →
+        GitHub Repository [Private] →
       </a>
     </div>
   </div>
 
   <div class="project-card">
     <div>
-      <h3>UPA Académico PWA</h3>
+      <h3><span>UPA Académico PWA</span> <span class="project-badge-private">[Private (GitHub)]</span></h3>
       <div class="project-tags">
         <span class="project-tag">Next.js 14</span>
         <span class="project-tag">React</span>
@@ -60,10 +60,11 @@ Overview of selected open-source repositories and development projects focusing 
     </div>
     <div class="project-links">
       <a class="project-link" href="https://github.com/Pascal-Thommen/UPA_PWA" target="_blank" rel="noopener noreferrer">
-        GitHub Repository →
+        GitHub Repository [Private] →
       </a>
     </div>
   </div>
+
 
   <div class="project-card">
     <div>
