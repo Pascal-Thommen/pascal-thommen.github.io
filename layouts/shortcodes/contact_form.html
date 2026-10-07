@@ -2,9 +2,7 @@
 {{ $isDe := eq $lang "de" }}
 {{ $isEs := eq $lang "es" }}
 
-{{ $title := cond $isDe "Schreib mir eine Nachricht" (cond $isEs "Envíame un mensaje" "Send me a message") }}
-{{ $subtitle := cond $isDe "Hinterlasse deine Nachricht und Kontaktdaten." (cond $isEs "Deja tu mensaje y datos de contacto." "Leave your message and contact details.") }}
-{{ $hint := cond $isDe "Mindestens ein Kontaktweg erforderlich: E-Mail oder WhatsApp." (cond $isEs "Al menos un método de contacto requerido: correo electrónico o WhatsApp." "At least one contact method required: Email or WhatsApp.") }}
+{{ $hint := cond $isDe "Mindestens E-Mail oder WhatsApp erforderlich." (cond $isEs "Correo o WhatsApp requerido." "Email or WhatsApp required.") }}
 {{ $labelName := cond $isDe "Name" (cond $isEs "Nombre" "Name") }}
 {{ $placeholderName := cond $isDe "Dein vollständiger Name" (cond $isEs "Tu nombre completo" "Your full name") }}
 {{ $labelEmail := cond $isDe "E-Mail-Adresse" (cond $isEs "Correo electrónico" "Email Address") }}
@@ -29,11 +27,6 @@
 
 <div class="contact-container">
   <div id="contact-form-card" class="contact-card">
-    <div class="contact-header">
-      <h2>{{ $title }}</h2>
-      <p>{{ $subtitle }}</p>
-    </div>
-
     <div class="contact-info-badge">
       <span>{{ $hint }}</span>
     </div>
