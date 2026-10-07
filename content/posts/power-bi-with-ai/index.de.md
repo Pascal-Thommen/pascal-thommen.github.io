@@ -2,7 +2,7 @@
 title: "Power BI mit KI: PBIP und MCP in der Praxis"
 date: 2026-10-06T18:00:00Z
 description: "Wie verbindet man Power BI mit KI-Agenten? Ein technischer Blick auf PBIP-Dateien, den Power BI Modeling MCP Server, Datenbankanbindungen und Grenzen."
-summary: "Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten, ohne im Blindflug zu landen?"
+summary: "Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten? Ein technischer Vergleich von PBIP, MCP und Copilot."
 tags: ["Power BI", "Künstliche Intelligenz", "MCP", "Business Intelligence", "Wirtschaftsinformatik"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -14,7 +14,7 @@ aliases:
   - "/de/posts/power-bi-mit-ki/"
 ---
 
-Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten, ohne im Blindflug zu landen?
+Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten?
 
 ![Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana](hackathon_group.jpg)
 *Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana (3. Oktober 2026).*
@@ -24,7 +24,7 @@ Drei Ansätze stehen in der Praxis zur Auswahl:
 * **Live-Sitzung (MCP):** Über Microsofts Analysis Services MCP Server direkt in die offene Power BI Desktop Instanz eingreifen.
 * **Cloud (Microsoft Copilot):** Fertige KI-Funktionen in Microsoft Fabric nutzen.
 
-Jeder dieser Pfade löst ein anderes Problem. Keiner kann alles.
+Für die aktive Entwicklung am Modell ist Pfad 2 (MCP) die verlässlichste und kostengünstigste Methode, da er sofortige Live-Tests mit minimalem Token-Verbrauch erlaubt. Pfad 1 spielt seine Stärke bei automatisierter CI/CD in Git aus, während Pfad 3 vor allem für reine Fachanwender gedacht ist.
 
 ---
 
@@ -91,7 +91,7 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 ![MCP Server aktiv in Claude Desktop](claude_mcp_running.jpg)
 *Der Power BI Modeling MCP Server aktiv verbunden in Claude Desktop.*
 
-Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Analysis-Services-Instanz startet, dockt der MCP-Server direkt an diesen lokalen Port an, unabhängig davon, ob die Datei als `.pbix` oder `.pbip` vorliegt. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
+Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Analysis-Services-Instanz startet, dockt der MCP-Server direkt an diesen lokalen Port an. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
 
 ---
 
@@ -99,7 +99,7 @@ Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Anal
 
 Microsoft bietet mit Copilot auch eine direkt integrierte KI-Funktion in der Cloud-Oberfläche und im Desktop an.
 
-* **Kosten und Lizenzierung:** Copilot setzt bezahlte Cloud-Kapazität voraus, entweder über Nutzer-Add-ons (rund 30 USD monatlich pro Nutzer) oder dedizierte Microsoft Fabric Kapazitäten (mindestens F64 SKU). Das führt zu spürbarem Vendor Lock-in und hohen Fixkosten im Vergleich zu offenen LLM-APIs.
+* **Kosten und Lizenzierung:** Copilot ist an die Microsoft-Cloud gebunden und erfordert kostenpflichtige Lizenzen oder Fabric-Kapazitäten. Das erzeugt laufende Plattformkosten und Vendor Lock-in.
 * **Geschlossenes System:** Copilot agiert als verwalteter Cloud-Dienst ohne Eingriffsmöglichkeiten in System-Prompts, Agenten-Ketten oder externe Entwickler-Tools.
 * **Fokus:** Ausgelegt auf Fachanwender für schnelle Text-Zusammenfassungen und Standard-Diagramme, nicht auf fundierte semantische Modellierung.
 
@@ -111,7 +111,7 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 
 | Anforderung / Funktion | Pfad 1: PBIP (Dateiebene) | Pfad 2: MCP Server (Live) | Pfad 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Unterstützte Formate** | Nur PBIP (Ordnerstruktur) | Sowohl PBIX als auch PBIP | PBIX und publizierte Modelle |
+| **Unterstützte Formate** | Nur PBIP (Dateisystem) | Sowohl PBIX als auch PBIP | Sowohl PBIX als auch PBIP |
 | **DAX-Measures erstellen** | Ja (Stapelverarbeitung in TMDL) | Ja (direkt im Modell injiziert) | Ja (über Chat-Prompt) |
 | **Live-Syntaxprüfung** | Nein (blinde Textbearbeitung) | Ja (sofortiges Engine-Feedback) | Eingeschränkt (nur Heuristik) |
 | **DAX-Testabfragen (`execute_dax`)** | Nein (keine laufende Engine) | Ja (direkte Abfrage der Engine) | Nein |

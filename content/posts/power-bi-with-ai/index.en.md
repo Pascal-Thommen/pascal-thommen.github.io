@@ -2,7 +2,7 @@
 title: "Power BI with AI: PBIP and MCP in Practice"
 date: 2026-10-06T18:00:00Z
 description: "How do you connect Power BI with AI agents? A hands-on look at PBIP files, the Power BI Modeling MCP Server, database connections, and limitations."
-summary: "At the 3rd Business Intelligence & AI Hackathon, one question took center stage: How do you reliably control a Power BI model with AI agents without operating blindly? A breakdown of PBIP, MCP, and Copilot."
+summary: "At the 3rd Business Intelligence & AI Hackathon, one question took center stage: How do you reliably control a Power BI model with AI agents? A technical comparison of PBIP, MCP, and Copilot."
 tags: ["Power BI", "Artificial Intelligence", "MCP", "Business Intelligence", "Business Informatics"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -14,7 +14,7 @@ aliases:
   - "/en/posts/power-bi-mit-ki/"
 ---
 
-At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents without operating blindly?
+At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents?
 
 ![Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana](hackathon_group.jpg)
 *Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana (October 3, 2026).*
@@ -24,7 +24,7 @@ Three distinct paths exist in practice:
 * **Live Session (MCP):** Driving the active Power BI Desktop instance through Microsoft's Analysis Services MCP server.
 * **Cloud (Microsoft Copilot):** Using built-in AI capabilities within Microsoft Fabric.
 
-Each path solves a different problem. None can do everything.
+For active model development, Path 2 (MCP) is the most reliable and cost-effective method: it allows instant live testing with minimal token usage. Path 1 shines in automated Git CI/CD pipelines, while Path 3 is primarily designed for end users.
 
 ---
 
@@ -91,7 +91,7 @@ Microsoft provides the **Power BI Modeling MCP Server** extension for Visual Stu
 ![MCP Server running in Claude Desktop](claude_mcp_running.jpg)
 *The Power BI Modeling MCP Server connected and running inside Claude Desktop.*
 
-Because Power BI Desktop runs a local Analysis Services instance in the background for any open report, the MCP server attaches directly to its local port regardless of whether the file on disk is a `.pbix` archive or a `.pbip` folder. The AI receives functional tools: inspecting tables, creating measures, and running DAX test queries. If a formula fails, the engine returns the error message immediately, allowing the AI to self-correct in real time.
+Because Power BI Desktop runs a local Analysis Services instance in the background for any open report, the MCP server attaches directly to its local port. The AI receives functional tools: inspecting tables, creating measures, and running DAX test queries. If a formula fails, the engine returns the error message immediately, allowing the AI to self-correct in real time.
 
 ---
 
@@ -99,7 +99,7 @@ Because Power BI Desktop runs a local Analysis Services instance in the backgrou
 
 Microsoft also offers built-in AI capabilities directly inside the Power BI service and desktop through Copilot.
 
-* **Cost and Licensing:** Copilot requires paid cloud capacity, either through per-user add-ons ($30 per user monthly) or dedicated Microsoft Fabric capacity (minimum F64 SKU). This introduces substantial recurring costs and platform lock-in compared to open LLM APIs.
+* **Cost and Licensing:** Copilot is bound to the Microsoft Cloud and requires paid licenses or Fabric capacities. This introduces recurring platform costs and vendor lock-in.
 * **Closed Ecosystem:** Copilot operates as a managed cloud feature without options for custom prompt engineering, agentic workflows, or external developer tooling.
 * **Primary Focus:** Built primarily for business users to generate summary texts and standard visual layouts rather than deep data model engineering.
 
@@ -111,7 +111,7 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 
 | Capability / Requirement | Path 1: PBIP Files (TMDL) | Path 2: MCP Server (Live) | Path 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Compatible Formats** | Only PBIP (folder structure) | Both PBIX and PBIP | PBIX and published models |
+| **Compatible Formats** | Only PBIP (file system) | Both PBIX and PBIP | Both PBIX and PBIP |
 | **DAX Measure Creation** | Yes (batch plain text) | Yes (direct injection) | Yes (chat prompt) |
 | **Live Syntax Validation** | No (blind text edits) | Yes (instant engine feedback) | Partial (heuristics only) |
 | **DAX Query Testing (`execute_dax`)** | No (no running engine) | Yes (direct engine query) | No |

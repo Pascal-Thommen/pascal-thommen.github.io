@@ -2,7 +2,7 @@
 title: "Power BI con IA: PBIP y MCP en la práctica"
 date: 2026-10-06T18:00:00Z
 description: "¿Cómo conectar Power BI con agentes de IA? Un análisis técnico de archivos PBIP, el servidor MCP de modelado, conexiones a bases de datos y limitaciones."
-summary: "En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA sin perder el control?"
+summary: "En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA? Una comparativa técnica de PBIP, MCP y Copilot."
 tags: ["Power BI", "Inteligencia Artificial", "MCP", "Business Intelligence", "Informática Empresarial"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -14,7 +14,7 @@ aliases:
   - "/es/posts/power-bi-mit-ki/"
 ---
 
-En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA sin perder el control?
+En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA?
 
 ![Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana](hackathon_group.jpg)
 *Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana (3 de octubre de 2026).*
@@ -24,7 +24,7 @@ En la práctica existen tres opciones principales:
 * **Sesión en vivo (MCP):** Interactuar con la instancia activa de Power BI Desktop a través del servidor MCP de Analysis Services.
 * **Nube (Microsoft Copilot):** Utilizar las capacidades integradas de IA en Microsoft Fabric.
 
-Cada vía resuelve una necesidad diferente. Ninguna lo cubre todo.
+Para el desarrollo activo del modelo, el Camino 2 (MCP) es el método más confiable y económico, ya que permite pruebas en vivo inmediatas con un consumo mínimo de tokens. El Camino 1 destaca en la integración continua con Git y CI/CD, mientras que el Camino 3 está pensado principalmente para usuarios finales de negocio.
 
 ---
 
@@ -91,7 +91,7 @@ La extensión de Visual Studio Code **Power BI Modeling MCP Server** empaqueta u
 ![Servidor MCP activo en Claude Desktop](claude_mcp_running.jpg)
 *El servidor MCP conectado y en ejecución dentro de Claude Desktop.*
 
-Dado que Power BI Desktop levanta una instancia local de Analysis Services en segundo plano para cualquier informe abierto, el servidor MCP se conecta directamente a ese puerto local sin importar si el archivo en disco es un archivo binario `.pbix` o una carpeta `.pbip`. La IA obtiene herramientas funcionales: consultar el esquema, crear medidas y ejecutar consultas DAX de prueba contra el motor. Si una fórmula tiene errores de sintaxis, el motor responde de inmediato y la IA corrige el código de manera autónoma.
+Dado que Power BI Desktop levanta una instancia local de Analysis Services en segundo plano para cualquier informe abierto, el servidor MCP se conecta directamente a ese puerto local. La IA obtiene herramientas funcionales: consultar el esquema, crear medidas y ejecutar consultas DAX de prueba contra el motor. Si una fórmula tiene errores de sintaxis, el motor responde de inmediato y la IA corrige el código de manera autónoma.
 
 ---
 
@@ -99,7 +99,7 @@ Dado que Power BI Desktop levanta una instancia local de Analysis Services en se
 
 Microsoft ofrece también funciones integradas de IA directamente en el servicio en la nube y en Power BI Desktop mediante Copilot.
 
-* **Costos y licenciamiento:** Copilot requiere capacidad contratada en la nube, ya sea mediante complementos por usuario (30 USD mensuales por usuario) o capacidad dedicada en Microsoft Fabric (a partir del SKU F64). Esto introduce costos recurrentes considerables y un fuerte bloqueo de proveedor (vendor lock-in) frente a APIs abiertas de LLM.
+* **Costos y licenciamiento:** Copilot está vinculado a la nube de Microsoft y requiere licencias de pago o capacidades de Fabric. Esto genera costos continuos de plataforma y bloqueo de proveedor (vendor lock-in).
 * **Sistema cerrado:** Funciona como un servicio administrado en la nube sin opciones para personalizar prompts del sistema, encadenar agentes o conectar herramientas externas de desarrollo.
 * **Enfoque principal:** Diseñado para usuarios de negocio que buscan resúmenes rápidos y diseños visuales estándar, no para ingeniería profunda del modelo de datos.
 
@@ -111,7 +111,7 @@ Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta vent
 
 | Capacidad / Requerimiento | Camino 1: PBIP (Archivos TMDL) | Camino 2: Servidor MCP (En vivo) | Camino 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Formatos compatibles** | Solo PBIP (carpeta de archivos) | Tanto PBIX como PBIP | PBIX y modelos publicados |
+| **Formatos compatibles** | Solo PBIP (sistema de archivos) | Tanto PBIX como PBIP | Tanto PBIX como PBIP |
 | **Creación de medidas DAX** | Sí (por lotes en texto plano) | Sí (inyección directa al modelo) | Sí (prompt en chat) |
 | **Validación de sintaxis en vivo** | No (edición ciega de texto) | Sí (respuesta inmediata del motor) | Parcial (solo heurística) |
 | **Prueba de consultas DAX (`execute_dax`)** | No (sin motor en ejecución) | Sí (consulta directa al motor) | No |
