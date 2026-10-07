@@ -1,7 +1,7 @@
 baseURL: "https://pascal-thommen.github.io/"
 title: "Pascal Thommen"
 theme: "PaperMod"
-defaultContentLanguage: "de"
+defaultContentLanguage: "en"
 defaultContentLanguageInSubdir: false
 enableRobotsTXT: true
 copyright: "Pascal Thommen"
@@ -35,45 +35,10 @@ params:
       title: "GitHub"
 
 languages:
-  de:
-    label: "Deutsch"
-    locale: "de-DE"
-    weight: 1
-    title: "Pascal Thommen | Wirtschaftsinformatiker"
-    params:
-      profileMode:
-        enabled: true
-        title: "Pascal Thommen"
-        subtitle: "Wirtschaftsinformatiker @ UPA | ERP-Architektur & AI-driven System Engineering"
-        imageUrl: "images/pascal_linkedin_profile.jpg"
-        imageWidth: 160
-        imageHeight: 160
-        imageTitle: "Pascal Thommen"
-        buttons:
-          - name: "Projekte"
-            url: "/projects/"
-          - name: "Artikel"
-            url: "/posts/"
-          - name: "Über mich"
-            url: "/about/"
-    menu:
-      main:
-        - identifier: "projects"
-          name: "Projekte"
-          url: "/projects/"
-          weight: 10
-        - identifier: "posts"
-          name: "Artikel"
-          url: "/posts/"
-          weight: 20
-        - identifier: "about"
-          name: "Über mich"
-          url: "/about/"
-          weight: 30
   en:
     label: "English"
     locale: "en-US"
-    weight: 2
+    weight: 1
     title: "Pascal Thommen | Business Informatics"
     params:
       profileMode:
@@ -86,24 +51,59 @@ languages:
         imageTitle: "Pascal Thommen"
         buttons:
           - name: "Projects"
-            url: "/en/projects/"
+            url: "/projects/"
           - name: "Articles"
-            url: "/en/posts/"
+            url: "/posts/"
           - name: "About"
-            url: "/en/about/"
+            url: "/about/"
     menu:
       main:
         - identifier: "projects"
           name: "Projects"
-          url: "/en/projects/"
+          url: "/projects/"
           weight: 10
         - identifier: "posts"
           name: "Articles"
-          url: "/en/posts/"
+          url: "/posts/"
           weight: 20
         - identifier: "about"
           name: "About"
-          url: "/en/about/"
+          url: "/about/"
+          weight: 30
+  de:
+    label: "Deutsch"
+    locale: "de-DE"
+    weight: 2
+    title: "Pascal Thommen | Wirtschaftsinformatiker"
+    params:
+      profileMode:
+        enabled: true
+        title: "Pascal Thommen"
+        subtitle: "Wirtschaftsinformatiker @ UPA | ERP-Architektur & AI-driven System Engineering"
+        imageUrl: "images/pascal_linkedin_profile.jpg"
+        imageWidth: 160
+        imageHeight: 160
+        imageTitle: "Pascal Thommen"
+        buttons:
+          - name: "Projekte"
+            url: "/de/projects/"
+          - name: "Artikel"
+            url: "/de/posts/"
+          - name: "Über mich"
+            url: "/de/about/"
+    menu:
+      main:
+        - identifier: "projects"
+          name: "Projekte"
+          url: "/de/projects/"
+          weight: 10
+        - identifier: "posts"
+          name: "Artikel"
+          url: "/de/posts/"
+          weight: 20
+        - identifier: "about"
+          name: "Über mich"
+          url: "/de/about/"
           weight: 30
   es:
     label: "Español"
