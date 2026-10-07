@@ -19,8 +19,8 @@ At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one qu
 *Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana (October 3, 2026).*
 
 Three distinct paths exist in practice:
-* **File Level (PBIP):** Direct editing of TMDL text files on disk with coding agents. Works immediately without any setup and without opening Power BI Desktop.
-* **Live Session (MCP):** Direct connection to the local Analysis Services engine in Power BI Desktop for interactive modeling with real-time error checking and DAX test queries.
+* **File Level (PBIP):** Direct editing of TMDL text files on disk with coding agents. Works immediately without opening Power BI Desktop and without any setup.
+* **Live Session (MCP):** Direct connection to the local Analysis Services engine in Power BI Desktop for interactive modeling with real-time error checking and DAX test queries (works with both PBIX and PBIP).
 * **Cloud (Microsoft Copilot):** Natively integrated within Microsoft Fabric for automated report page layout and canvas visuals inside the Microsoft ecosystem.
 
 ---
@@ -45,11 +45,11 @@ The standard `.pbix` format is a compressed binary archive. An AI model cannot i
 * **Semantic Model:** Tables, relationships, and DAX measures are stored in TMDL (Tabular Model Definition Language) files.
 * **Report Definition:** Visuals, layouts, and filters are stored in JSON format.
 
-A coding agent (such as Claude Code or any terminal-based agent) can open this directory, read the TMDL files, understand the schema, and write new measures directly into the source code. This works immediately without extra middleware, without API configuration, and without opening Power BI Desktop.
+The decisive advantage of Path 1 is zero setup: Coding agents (such as Claude Code, Cursor, or CLI scripts) can work immediately on any operating system, including headless Linux servers or CI environments. They analyze TMDL files directly in the project directory and write new measures into code without needing Power BI Desktop installed or running.
 
 ### Practical Limitations of Path 1
 
-While the PBIP file format provides the ideal plain-text foundation, editing files directly without a running engine has decisive limitations:
+Without a running engine in the background, this purely file-based approach has clear limitations:
 
 * **No live syntax validation:** The agent writes DAX formulas into text files blindly. Syntax errors are only caught when you open or reload the project in Power BI Desktop.
 * **No test execution:** The agent cannot run `execute_dax` queries to verify calculation results against actual data.
@@ -98,9 +98,9 @@ When a PBIP project is edited this way and subsequently saved in Power BI Deskto
 
 Microsoft also offers built-in AI capabilities directly inside the Power BI service and desktop through Copilot.
 
-* **Focus on Ecosystem and Canvas:** Copilot's greatest strength lies in the Microsoft ecosystem: enterprise governance, compliance, and automated creation of report pages and visuals directly on the canvas. It is rarely suited for demanding semantic data modeling or complex DAX logic.
-* **Always Cloud-Bound:** Even when used inside Power BI Desktop, processing never runs locally on your PC. All queries are handled in the Microsoft Cloud and require an assigned Microsoft Fabric capacity (minimum F64 SKU) in the tenant.
-* **Platform Costs and Vendor Lock-in:** Dedicated Fabric capacities require substantial recurring platform fees, and Copilot remains a closed platform without custom system prompts or external developer tool access.
+* **Cloud-Bound Despite Desktop:** Even when Copilot is available as a side pane in Power BI Desktop for both `.pbix` and `.pbip`, processing never runs locally. Every prompt is sent to the Microsoft Cloud. Without an active connection and assigned Fabric capacity (minimum F64 SKU) in the tenant, the feature remains disabled.
+* **Genuine Advantage: Ecosystem and Canvas Generation:** Copilot's true value lies not in deep semantic modeling, but in seamless integration with Microsoft Fabric and the ability to generate entire report pages and visuals directly onto the canvas. Neither Path 1 nor Path 2 can do that.
+* **Platform Costs and Vendor Lock-in:** Dedicated Fabric capacities represent a substantial financial hurdle. Furthermore, Copilot remains a closed platform without access to system prompts or external developer toolchains.
 
 ---
 
@@ -108,15 +108,17 @@ Microsoft also offers built-in AI capabilities directly inside the Power BI serv
 
 No single tool covers the entire workflow. Each approach has distinct strengths and clear limitations:
 
-| Capability / Requirement | Path 1: PBIP (File Level) | Path 2: MCP Server (Live) | Path 3: Microsoft Copilot |
+| Capability / Requirement | Path 1: Headless File System | Path 2: MCP Server (Live) | Path 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Supported File Formats** | Only PBIP (file system) | Both PBIX and PBIP | Both PBIX and PBIP |
+| **Supported File Formats** | Strictly PBIP (TMDL plain text) | Both PBIX and PBIP | Both PBIX and PBIP |
+| **Setup Overhead** | Zero (usable in any editor) | Medium (VS Code extension & config) | Low if licensing is in place |
 | **DAX Measure Creation** | Yes (batch plain text in TMDL) | Yes (direct injection into engine) | Yes (chat prompt) |
 | **Live Syntax Validation** | No (blind text edits) | Yes (instant engine feedback) | Partial (heuristics only) |
 | **DAX Query Testing (`execute_dax`)** | No (no running engine) | Yes (direct engine query) | No |
-| **Git Version Control & CI/CD** | Excellent (pure TMDL text diffs) | Available with PBIP after saving | No direct Git integration |
+| **Git & Version Control** | Native via PBIP files | Available with PBIP after saving | None (tied to Microsoft cloud) |
 | **Hardware Requirements** | Minimal (CLI or code editor) | High (Desktop app and RAM) | None (cloud hosting) |
 | **Data Privacy & Inference Location** | Controlled by chosen LLM | Controlled by chosen LLM | Always in Microsoft Cloud |
+| **DirectQuery Support** | Limited (metadata only) | Complex (query latency) | Yes (native cloud support) |
 | **Visual Canvas Layout** | Limited (blind JSON edits) | No (modeling focus only) | Yes (generates canvas visuals) |
 | **Custom SVG Cards & HTML Visuals** | Limited (blind DAX string) | Excellent (live visual preview) | Poor (standard visuals only) |
 | **Cost & Model Flexibility** | Free (any LLM or local model) | Free (any MCP client) | High (Fabric F64 or user license) |
@@ -147,7 +149,9 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 
 ## Conclusion
 
-1. **PBIP is the mandatory foundation:** Versioning data models in Git and connecting CI/CD pipelines requires leaving binary PBIX files behind. Version control is a fundamental property of the file format, not of the AI tool used.
+For practice, two central insights remain:
+
+1. **PBIP is the mandatory foundation:** Versioning data models in Git and connecting CI/CD pipelines requires leaving binary PBIX files behind. Version control is a property of the file format, not of the AI tool used.
 2. **MCP decisively wins active modeling:** Plain filesystem agents fail on missing syntax validation, while Copilot remains an expensive convenience tool for generic canvas visuals. For demanding semantic modeling, complex DAX logic, and bespoke SVG cards, live engine connection via MCP is by far the most productive path.
 
 ---

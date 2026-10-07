@@ -20,8 +20,8 @@ En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Univer
 *Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana (3 de octubre de 2026).*
 
 En la práctica existen tres opciones principales:
-* **Nivel de archivos (PBIP):** Edición directa de archivos de texto TMDL en el sistema de archivos con agentes de código. Funciona de inmediato sin configuración previa y sin abrir Power BI Desktop.
-* **Sesión en vivo (MCP):** Conexión directa al motor local de Analysis Services en Power BI Desktop para modelado interactivo con verificación de errores en tiempo real y consultas DAX de prueba.
+* **Nivel de archivos (PBIP):** Edición directa de archivos de texto TMDL en el sistema de archivos con agentes de código. Funciona de inmediato sin necesidad de abrir Power BI Desktop y sin ninguna configuración previa.
+* **Sesión en vivo (MCP):** Conexión directa al motor local de Analysis Services en Power BI Desktop para modelado interactivo con verificación de errores en tiempo real y consultas DAX de prueba (funciona tanto con PBIX como con PBIP).
 * **Nube (Microsoft Copilot):** Integración nativa en Microsoft Fabric para la creación automatizada de páginas de informe y elementos visuales directamente en el lienzo dentro del ecosistema Microsoft.
 
 ---
@@ -46,11 +46,11 @@ Los archivos clásicos `.pbix` son paquetes binarios comprimidos que resultan il
 * **Modelo semántico:** Las tablas, relaciones y medidas DAX se guardan como archivos TMDL (Tabular Model Definition Language).
 * **Definición de informes:** Los gráficos, formatos y filtros se guardan en archivos JSON estructurados.
 
-Un agente de desarrollo (como Claude Code o cualquier herramienta de terminal) puede trabajar directamente sobre la carpeta, analizar el esquema TMDL y escribir nuevas medidas en el código fuente. Esto funciona de inmediato sin herramientas intermedias, sin configuración de APIs y sin necesidad de abrir Power BI Desktop.
+La ventaja decisiva del Camino 1 es la configuración cero: Los agentes de código (como Claude Code, Cursor o scripts CLI) pueden trabajar de inmediato en cualquier sistema operativo, incluso en servidores Linux o entornos CI sin interfaz gráfica. Analizan los archivos TMDL directamente en la carpeta del proyecto y escriben nuevas medidas en el código sin necesidad de tener Power BI Desktop instalado o abierto.
 
 ### Limitaciones reales del Camino 1
 
-Aunque el formato de archivo PBIP ofrece una base ideal en texto plano, la edición directa de archivos sin un motor en ejecución presenta limitaciones decisivas:
+Sin un motor en ejecución en segundo plano, este enfoque basado exclusivamente en archivos presenta limitaciones evidentes:
 
 * **Sin validación de sintaxis en tiempo real:** El agente escribe fórmulas DAX directamente en los archivos de texto. Si hay un error, solo se detecta al abrir o recargar el proyecto en Power BI Desktop.
 * **Sin ejecución de consultas de prueba:** El agente no puede ejecutar consultas de prueba (`execute_dax`) contra el motor para comprobar si los números calculados son correctos.
@@ -99,9 +99,9 @@ Cuando se edita un proyecto PBIP mediante este método y luego se guarda en Powe
 
 Microsoft ofrece también funciones integradas de IA directamente en el servicio en la nube y en Power BI Desktop mediante Copilot.
 
-* **Foco en el ecosistema y lienzo:** La mayor fortaleza de Copilot reside en el ecosistema de Microsoft: gobernanza empresarial, cumplimiento normativo y creación automatizada de páginas de informe y elementos visuales directamente en el lienzo. Rara vez está pensado para modelado de datos semántico profundo o lógica DAX compleja.
-* **Siempre ligado a la nube:** Incluso al utilizarlo dentro de Power BI Desktop, el procesamiento nunca se ejecuta localmente en la máquina. Todas las consultas se procesan en la nube de Microsoft y requieren una capacidad asignada de Microsoft Fabric (mínimo SKU F64) en el tenant.
-* **Costos y dependencia de plataforma:** Las capacidades dedicadas de Fabric conllevan costos periódicos elevados, y Copilot sigue siendo una plataforma cerrada sin acceso a prompts de sistema personalizados ni herramientas de desarrollo externas.
+* **Ligado a la nube a pesar de Desktop:** Incluso al utilizar Copilot como panel lateral en Power BI Desktop tanto para `.pbix` como para `.pbip`, el procesamiento nunca se ejecuta localmente. Cada instrucción se envía a la nube de Microsoft. Sin una conexión activa y sin una capacidad asignada de Fabric (mínimo SKU F64) en el tenant, la función permanece inactiva.
+* **Verdadera ventaja: Ecosistema y generación en el lienzo:** El valor genuino de Copilot no radica en el modelado semántico profundo, sino en la integración transparente con Microsoft Fabric y en su capacidad para generar páginas de informe completas y elementos visuales directamente en el lienzo. Esto no lo pueden hacer ni el Camino 1 ni el Camino 2.
+* **Costos de plataforma y dependencia del proveedor:** Las capacidades dedicadas de Fabric representan una barrera financiera considerable. Además, Copilot sigue siendo una plataforma cerrada sin acceso a prompts de sistema personalizados ni herramientas de desarrollo externas.
 
 ---
 
@@ -109,15 +109,17 @@ Microsoft ofrece también funciones integradas de IA directamente en el servicio
 
 Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta ventajas y limitaciones evidentes:
 
-| Requisito / Capacidad | Camino 1: PBIP (Nivel archivos) | Camino 2: Servidor MCP (En vivo) | Camino 3: Microsoft Copilot |
+| Requisito / Capacidad | Camino 1: Sistema de archivos Headless | Camino 2: Servidor MCP (En vivo) | Camino 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Formatos compatibles** | Solo PBIP (sistema de archivos) | Tanto PBIX como PBIP | Tanto PBIX como PBIP |
+| **Formatos compatibles** | Estrictamente PBIP (TMDL texto plano) | Tanto PBIX como PBIP | Tanto PBIX como PBIP |
+| **Carga de configuración** | Cero (utilizable en cualquier editor) | Media (extensión VS Code y config) | Baja si ya cuenta con licencia |
 | **Creación de medidas DAX** | Sí (por lotes en TMDL) | Sí (inyección directa al motor) | Sí (prompt en chat) |
 | **Validación de sintaxis en vivo** | No (edición ciega de texto) | Sí (respuesta inmediata del motor) | Parcial (solo heurística) |
 | **Consultas de prueba (`execute_dax`)** | No (sin motor en ejecución) | Sí (consulta directa al motor) | No |
-| **Control de versiones en Git y CI/CD** | Excelente (diffs de texto TMDL puros) | Disponible con PBIP tras guardar | Sin integración directa con Git |
+| **Control de versiones en Git y CI/CD** | Nativo mediante archivos PBIP | Disponible con PBIP tras guardar | Sin integración directa con Git |
 | **Requisitos de hardware** | Mínimos (CLI o editor de código) | Altos (Power BI Desktop y RAM) | Ninguno (hospedaje en nube) |
 | **Privacidad de datos y ubicación de inferencia** | Controlada por el LLM elegido | Controlada por el LLM elegido | Siempre en la nube de Microsoft |
+| **Soporte para DirectQuery** | Limitado (solo metadatos) | Complejo (latencia de consulta) | Sí (soporte nativo en la nube) |
 | **Diseño visual en el lienzo** | Limitado (edición ciega de JSON) | No (enfoque exclusivo en modelado) | Sí (crea visuales en el lienzo) |
 | **Tarjetas SVG a medida y HTML** | Limitado (cadena DAX a ciegas) | Excelente (vista previa en vivo) | Inadecuado (solo visuales estándar) |
 | **Costo y flexibilidad de modelos** | Gratuito (cualquier LLM o local) | Gratuito (cualquier cliente MCP) | Alto (licencia de usuario o Fabric F64) |
@@ -148,7 +150,9 @@ Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta vent
 
 ## Conclusión
 
-1. **PBIP es la base obligatoria:** Controlar versiones en Git e integrar flujos de CI/CD exige abandonar el formato binario PBIX. El control de versiones es una propiedad fundamental del formato de archivo, no de la herramienta de IA utilizada.
+Para la práctica quedan dos conclusiones esenciales:
+
+1. **PBIP es la base obligatoria:** Controlar versiones en Git e integrar flujos de CI/CD exige abandonar el formato binario PBIX. El control de versiones es una propiedad del formato de archivo, no de la herramienta de IA utilizada.
 2. **MCP domina el desarrollo activo:** Los agentes sobre el sistema de archivos fallan por falta de validación de sintaxis, mientras que Copilot sigue siendo una costosa herramienta de conveniencia para visuales genéricos. Para el modelado semántico exigente, lógica DAX compleja y tarjetas SVG dinámicas, la conexión en vivo mediante MCP es con diferencia la vía más productiva.
 
 ---
