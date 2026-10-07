@@ -88,9 +88,6 @@ Microsoft provides the **Power BI Modeling MCP Server** extension for Visual Stu
 1. **Locate the Executable:** The extension installs `powerbi-modeling-mcp.exe` inside your local VS Code extension folder.
 2. **Configure the AI Client:** In `claude_desktop_config.json` (or any MCP-compatible client), register the server path with the `--start` argument:
 
-![Configuration in claude_desktop_config.json](claude_desktop_config_json.jpg)
-*Configuration snippet in claude_desktop_config.json pointing to the MCP executable.*
-
 ```json
 {
   "mcpServers": {

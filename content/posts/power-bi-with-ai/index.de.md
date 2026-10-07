@@ -88,9 +88,6 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 1. **Executable lokalisieren:** Die Extension installiert die `powerbi-modeling-mcp.exe` lokal im VS Code Erweiterungsordner.
 2. **KI-Client konfigurieren:** In der `claude_desktop_config.json` (oder jedem anderen MCP-kompatiblen Client) wird der Server mit dem Argument `--start` hinterlegt:
 
-![Konfiguration in claude_desktop_config.json](claude_desktop_config_json.jpg)
-*Konfigurationsblock in claude_desktop_config.json mit Pfad zur MCP-Executable.*
-
 ```json
 {
   "mcpServers": {
