@@ -54,6 +54,8 @@ languages:
             url: "/projects/"
           - name: "Articles"
             url: "/posts/"
+          - name: "Contact"
+            url: "/contact/"
     menu:
       main:
         - identifier: "projects"
@@ -64,6 +66,10 @@ languages:
           name: "Articles"
           url: "/posts/"
           weight: 20
+        - identifier: "contact"
+          name: "Contact"
+          url: "/contact/"
+          weight: 30
   de:
     label: "Deutsch"
     locale: "de-DE"
@@ -83,6 +89,8 @@ languages:
             url: "/de/projects/"
           - name: "Artikel"
             url: "/de/posts/"
+          - name: "Kontakt"
+            url: "/de/contact/"
     menu:
       main:
         - identifier: "projects"
@@ -93,6 +101,10 @@ languages:
           name: "Artikel"
           url: "/de/posts/"
           weight: 20
+        - identifier: "contact"
+          name: "Kontakt"
+          url: "/de/contact/"
+          weight: 30
   es:
     label: "Español"
     locale: "es-PY"
@@ -112,6 +124,8 @@ languages:
             url: "/es/projects/"
           - name: "Artículos"
             url: "/es/posts/"
+          - name: "Contacto"
+            url: "/es/contact/"
     menu:
       main:
         - identifier: "projects"
@@ -122,3 +136,7 @@ languages:
           name: "Artículos"
           url: "/es/posts/"
           weight: 20
+        - identifier: "contact"
+          name: "Contacto"
+          url: "/es/contact/"
+          weight: 30

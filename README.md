@@ -12,7 +12,7 @@ Live site: [https://pascal-thommen.github.io/](https://pascal-thommen.github.io/
 - **Dark / Light Mode:** Automatic system preference detection with manual toggle.
 - **Multilingual (i18n):** Native support for German (DE), English (EN), and Spanish (ES).
 - **Projects Showcase:** Structured portfolio highlighting key ERP, AI-engineering, and web application repositories (VibeCore-ERP, SARIC, UPA Académico PWA, ImportCalculator).
-- **Spam-Protected Contact:** Professional contact channel via LinkedIn without plaintext email exposure.
+- **Contact Form:** Integrated contact form with validation (email or WhatsApp) and honeypot spam protection, plus direct LinkedIn channel.
 - **Automated CI/CD:** Continuous deployment to GitHub Pages via GitHub Actions.
 
 ## Local Development
