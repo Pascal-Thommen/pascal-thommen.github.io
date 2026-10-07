@@ -3,16 +3,14 @@
 {{ $isEs := eq $lang "es" }}
 
 {{ $title := cond $isDe "Schreib mir eine Nachricht" (cond $isEs "Envíame un mensaje" "Send me a message") }}
-{{ $subtitle := cond $isDe "Hinterlasse deine Nachricht und Kontaktdaten. Ich antworte per E-Mail oder WhatsApp." (cond $isEs "Deja tu mensaje y datos de contacto. Te responderé por correo electrónico o WhatsApp." "Leave your message and contact details. I will respond via Email or WhatsApp.") }}
-{{ $hint := cond $isDe "Bitte gib mindestens einen Kontaktweg an (E-Mail oder WhatsApp), damit ich dir antworten kann." (cond $isEs "Por favor, proporciona al menos un método de contacto (correo o WhatsApp) para que pueda responderte." "Please provide at least one contact method (Email or WhatsApp) so I can reply to you.") }}
+{{ $subtitle := cond $isDe "Hinterlasse deine Nachricht und Kontaktdaten." (cond $isEs "Deja tu mensaje y datos de contacto." "Leave your message and contact details.") }}
+{{ $hint := cond $isDe "Mindestens ein Kontaktweg erforderlich: E-Mail oder WhatsApp." (cond $isEs "Al menos un método de contacto requerido: correo electrónico o WhatsApp." "At least one contact method required: Email or WhatsApp.") }}
 {{ $labelName := cond $isDe "Name" (cond $isEs "Nombre" "Name") }}
 {{ $placeholderName := cond $isDe "Dein vollständiger Name" (cond $isEs "Tu nombre completo" "Your full name") }}
 {{ $labelEmail := cond $isDe "E-Mail-Adresse" (cond $isEs "Correo electrónico" "Email Address") }}
 {{ $placeholderEmail := "name@example.com" }}
-{{ $badgeEmail := cond $isDe "(oder WhatsApp)" (cond $isEs "(o WhatsApp)" "(or WhatsApp)") }}
-{{ $labelWhatsapp := cond $isDe "WhatsApp / Telefon" (cond $isEs "WhatsApp / Teléfono" "WhatsApp / Phone") }}
-{{ $placeholderWhatsapp := cond $isDe "+49 170 1234567 oder +595 ..." (cond $isEs "+595 981 ... o número internacional" "+1 234 567 8900 or international") }}
-{{ $badgeWhatsapp := cond $isDe "(oder E-Mail)" (cond $isEs "(o correo)" "(or Email)") }}
+{{ $labelWhatsapp := "WhatsApp" }}
+{{ $placeholderWhatsapp := "+595 981 123456" }}
 {{ $labelMessage := cond $isDe "Nachricht" (cond $isEs "Mensaje" "Message") }}
 {{ $placeholderMessage := cond $isDe "Worum geht es in deinem Anliegen?..." (cond $isEs "¿De qué se trata tu consulta?..." "What is your inquiry about?...") }}
 {{ $btnSubmit := cond $isDe "Nachricht senden" (cond $isEs "Enviar mensaje" "Send Message") }}
@@ -71,18 +69,12 @@
 
       <div class="contact-form-row">
         <div class="contact-form-group">
-          <label for="contact-email" class="contact-label">
-            <span>{{ $labelEmail }}</span>
-            <span class="contact-badge-opt">{{ $badgeEmail }}</span>
-          </label>
+          <label for="contact-email" class="contact-label">{{ $labelEmail }}</label>
           <input type="email" id="contact-email" name="email" class="contact-input" placeholder="{{ $placeholderEmail }}" autocomplete="email">
         </div>
 
         <div class="contact-form-group">
-          <label for="contact-whatsapp" class="contact-label">
-            <span>{{ $labelWhatsapp }}</span>
-            <span class="contact-badge-opt">{{ $badgeWhatsapp }}</span>
-          </label>
+          <label for="contact-whatsapp" class="contact-label">{{ $labelWhatsapp }}</label>
           <input type="tel" id="contact-whatsapp" name="whatsapp" class="contact-input" placeholder="{{ $placeholderWhatsapp }}" autocomplete="tel">
         </div>
       </div>
