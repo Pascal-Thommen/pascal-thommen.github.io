@@ -34,22 +34,8 @@ Bevor man über KI spricht, muss die Datenebene geklärt sein.
 
 Power BI übernimmt die direkte Anbindung an die Datenquellen (SQL Server, PostgreSQL, ERP-Systeme oder Data Warehouses) über Power Query, DirectQuery oder geplante Importe. Der KI-Agent benötigt **keinen direkten Zugriff auf die Produktivdatenbank** und keine Datenbank-Zugangsdaten. Stattdessen operiert die KI ausschließlich auf der semantischen Modellschicht (Tabellenbeziehungen, Kennzahlen und DAX-Logik).
 
-```mermaid
-flowchart TD
-    DB[(Unternehmensdatenbank)] -->|Power Query / DirectQuery| PBI[Power BI Desktop / Engine]
-    
-    subgraph Pfad 1: Dateisystem
-        PBIP[PBIP Projektordner] -->|TMDL & JSON Dateien| Agent1[Coding Agent / Claude Code]
-        Agent1 -->|Git Commit| Repo[Git Repository]
-    end
-    
-    subgraph Pfad 2: Live-Sitzung
-        PBI <-->|Lokaler Analysis Services Port| MCP[Power BI Modeling MCP Server]
-        MCP <-->|Tools: execute_dax, create_measure| Agent2[KI-Assistent / Claude Desktop]
-    end
-    
-    PBI -.->|Speichern / Export| PBIP
-```
+![Architektur-Überblick: Dateibasierte Modellierung versus Live-Sitzung](architecture_diagram.png)
+*Architektur-Überblick: Dateibasiertes Modellieren via PBIP (Pfad 1) versus Live-Sitzung via MCP (Pfad 2) und Deployment in den Power BI Service.*
 
 Diese Trennung bietet einen wesentlichen Governance-Vorteil: Bestehende Sicherheitsrichtlinien, Rollenrechte und Firewalls verbleiben vollständig in Power BI. Die KI formt lediglich die Berechnungslogik und die visuelle Aufbereitung.
 
@@ -107,13 +93,19 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 
 Der MCP-Server dockt an den lokalen Port an. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
 
+### Kompatibel mit PBIX und PBIP
+
+Ein häufiges Missverständnis ist, dass MCP zwingend das neue PBIP-Format voraussetzt. Das stimmt nicht:
+* **PBIP ist nur für Pfad 1 zwingend erforderlich**, da der KI-Agent dort TMDL-Dateien direkt auf der Festplatte bearbeitet, ohne dass Power BI Desktop geöffnet sein muss.
+* **MCP dockt an die aktive Analysis-Services-Instanz an**, die Power BI Desktop im Hintergrund für jedes geöffnete Modell startet. Ob die Datei als `.pbip` oder als klassische binäre `.pbix` gespeichert ist, spielt für den MCP-Server keine Rolle.
+
 ---
 
 ## Pfad 3: Microsoft Copilot für Power BI
 
 Microsoft bietet mit Copilot auch eine direkt integrierte KI-Funktion in der Cloud-Oberfläche und im Desktop an.
 
-* **Kosten und Lizenzierung:** Microsoft Copilot erfordert zwingend bezahlte Microsoft Fabric Kapazitäten (mindestens F64 SKU) oder teure Premium-Lizenzen. Das ist für viele Entwickler und mittelständische Unternehmen eine enorme finanzielle Hürde.
+* **Kosten und Lizenzierung:** Microsoft Copilot in Power BI erfordert bezahlte Cloud-Kapazität. Während einfache Chat-Assistenten in Microsoft 365 oder Power BI Desktop per-User-Lizenzen (rund 30 USD pro Benutzer im Monat) verlangen, setzen voll integrierte Copilot-Funktionen in Power BI Workspaces dedizierte Microsoft Fabric Kapazitäten voraus (mindestens F64 SKU oder Pay-as-you-go Kapazitätseinheiten). Das führt zu starkem Vendor Lock-in und hohen Fixkosten im Vergleich zu offenen LLM-APIs.
 * **Geschlossenes System:** Copilot agiert als proprietäre Cloud-Blackbox ohne Eingriffsmöglichkeiten in Prompts, Workflows oder externe Werkzeugketten.
 * **Fokus:** Copilot richtet sich vor allem an Fachanwender für Berichts-Zusammenfassungen und einfache Standard-Diagramme, nicht an die tiefe Datenmodellierung.
 
@@ -125,13 +117,17 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 
 | Anforderung / Funktion | Pfad 1: PBIP (Dateiebene) | Pfad 2: MCP Server (Live) | Pfad 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
+| **Unterstützte Formate** | Nur PBIP (Ordnerstruktur) | Sowohl PBIX als auch PBIP | PBIX und publizierte Modelle |
 | **DAX-Measures erstellen** | Ja (Stapelverarbeitung in TMDL) | Ja (direkt im Modell injiziert) | Ja (über Chat-Prompt) |
 | **Live-Syntaxprüfung** | Nein (blinde Textbearbeitung) | Ja (sofortiges Engine-Feedback) | Eingeschränkt (nur Heuristik) |
 | **DAX-Testabfragen (`execute_dax`)** | Nein (keine laufende Engine) | Ja (direkte Abfrage der Engine) | Nein |
-| **Git-Versionskontrolle & CI/CD** | Exzellent (reine Text-Diffs) | Manuell (Modell muss erst gespeichert werden) | Keine (Cloud-gebunden) |
+| **Git-Versionskontrolle & CI/CD** | Exzellent (reine Text-Diffs) | Eingeschränkt (erfordert Speichern) | Keine (Cloud-gebunden) |
+| **Hardware-Anforderungen** | Minimal (CLI oder Code-Editor) | Hoch (Desktop-App und RAM) | Keine (Cloud-Hosting) |
+| **Datenschutz** | Abhängig vom gewählten LLM | Abhängig vom gewählten LLM | Gespeichert in Microsoft Cloud |
+| **DirectQuery-Unterstützung** | Eingeschränkt (nur Metadaten) | Komplex (Abfrage-Latenz) | Ja (native Cloud-Unterstützung) |
 | **Visuelles Layout & Diagramme** | Eingeschränkt (blinde JSON-Bearbeitung) | Nein (reiner Modellierungsfokus) | Ja (erstellt Visuals auf der Canvas) |
 | **Individuelle SVG-Karten & HTML** | Eingeschränkt (blinder DAX-Code) | Exzellent (sofortige visuelle Vorschau) | Unbrauchbar (nur Standard-Visuals) |
-| **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Sehr teuer (zwingend Fabric F64) |
+| **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Hoch (Fabric F64 oder User-Lizenz) |
 | **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktives Fabric Cloud-Abonnement |
 
 ### Fazit der Fähigkeiten

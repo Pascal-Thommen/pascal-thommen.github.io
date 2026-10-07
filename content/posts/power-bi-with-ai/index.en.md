@@ -34,22 +34,8 @@ Before examining AI tools, the data connection layer needs clarity.
 
 Power BI connects directly to your data sources (SQL Server, PostgreSQL, ERP systems, or cloud data warehouses) through Power Query, DirectQuery, or scheduled imports. The AI agent does not require direct access to your production database. Instead, the agent operates entirely on the semantic model layer (tables, relationships, and DAX calculations).
 
-```mermaid
-flowchart TD
-    DB[(Production Database)] -->|Power Query / DirectQuery| PBI[Power BI Desktop / Engine]
-    
-    subgraph Path 1: File System
-        PBIP[PBIP Project Folder] -->|TMDL & JSON Files| Agent1[Coding Agent / Claude Code]
-        Agent1 -->|Git Commit| Repo[Git Repository]
-    end
-    
-    subgraph Path 2: Live Session
-        PBI <-->|Local Analysis Services Port| MCP[Power BI Modeling MCP Server]
-        MCP <-->|Tools: execute_dax, create_measure| Agent2[AI Assistant / Claude Desktop]
-    end
-    
-    PBI -.->|Save / Export| PBIP
-```
+![Architecture Overview: File-Based Modeling vs. Live Session](architecture_diagram.png)
+*Architecture overview: File-based modeling via PBIP (Path 1) versus live session modeling via MCP (Path 2) and deployment to Power BI Service.*
 
 This separation provides a crucial governance advantage: existing enterprise access controls, firewalls, and data source permissions remain enforced by Power BI. The AI only shapes how data is modeled and aggregated.
 
@@ -107,13 +93,19 @@ Microsoft provides the **Power BI Modeling MCP Server** extension for Visual Stu
 
 Because Power BI Desktop runs a local Analysis Services instance in the background, the MCP server attaches to its local port. The AI receives functional tools: inspecting tables, creating measures, and running DAX test queries. If a formula fails, the engine returns the error message immediately, allowing the AI to self-correct in real time.
 
+### Works with Both PBIX and PBIP
+
+A frequent question is whether MCP requires the new PBIP format. The answer is no:
+* **PBIP is only mandatory for Path 1**, where an AI agent reads and edits TMDL text files on disk without running Power BI Desktop.
+* **MCP attaches to the active Analysis Services instance** that Power BI Desktop spins up locally whenever any report is open. Whether that file was saved as `.pbip` or as a legacy `.pbix` binary archive does not matter to the MCP server.
+
 ---
 
 ## Path 3: Microsoft Copilot for Power BI
 
 Microsoft also offers built-in AI capabilities directly inside the Power BI service and desktop through Copilot.
 
-* **Cost and Licensing:** Microsoft Copilot requires paid Microsoft Fabric capacity (minimum F64 SKU) or Premium capacity. This creates significant recurring cost barriers for individual developers or mid-sized teams.
+* **Cost and Licensing:** Microsoft Copilot in Power BI requires paid capacity. While individual chat assistance in Microsoft 365 or Power BI Desktop requires per-user add-on licenses ($30 per user per month), full organizational Copilot integration in Power BI workspaces requires dedicated Microsoft Fabric capacity (minimum F64 SKU or pay-as-you-go capacity units). This creates significant recurring cost barriers and vendor lock-in compared to open LLM APIs.
 * **Closed Ecosystem:** Copilot is a closed cloud feature. It does not allow custom prompt engineering, agentic chaining, or external tool execution.
 * **Primary Focus:** Copilot is designed primarily for non-technical users to generate summary descriptions and basic visual layouts rather than deep data model engineering.
 
@@ -125,13 +117,17 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 
 | Capability / Requirement | Path 1: PBIP Files (TMDL) | Path 2: MCP Server (Live) | Path 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
+| **Compatible Formats** | Only PBIP (folder structure) | Both PBIX and PBIP | PBIX and published models |
 | **DAX Measure Creation** | Yes (batch plain text) | Yes (direct injection) | Yes (chat prompt) |
 | **Live Syntax Validation** | No (blind text edits) | Yes (instant engine feedback) | Partial (heuristics only) |
 | **DAX Query Testing (`execute_dax`)** | No (no running engine) | Yes (direct engine query) | No |
-| **Git Version Control & CI/CD** | Excellent (native text diffs) | Manual (must save model first) | None (cloud-locked) |
+| **Git Version Control & CI/CD** | Excellent (native text diffs) | Limited (requires desktop save) | None (cloud-locked) |
+| **Hardware Requirements** | Minimal (CLI or code editor) | High (Desktop app and RAM) | Zero (cloud-hosted) |
+| **Data Privacy** | Depends on chosen LLM | Depends on chosen LLM | Stored in Microsoft Cloud |
+| **DirectQuery Support** | Limited (metadata only) | Complex (query latency) | Yes (native cloud support) |
 | **Visual Layout & Chart Generation** | Limited (blind JSON edits) | No (modeling focus only) | Yes (creates canvas visuals) |
 | **Custom SVG Cards & HTML Visuals** | Limited (blind DAX string) | Excellent (live visual preview) | Poor (standard visuals only) |
-| **Cost & Model Flexibility** | Free (any LLM or local model) | Free (any MCP client) | Very expensive (Fabric F64) |
+| **Cost & Model Flexibility** | Free (any LLM or local model) | Free (any MCP client) | High (Fabric F64 or user license) |
 | **Runtime Requirement** | Code editor only (CLI) | Power BI Desktop open locally | Active Fabric cloud subscription |
 
 ### Summary of Strengths
