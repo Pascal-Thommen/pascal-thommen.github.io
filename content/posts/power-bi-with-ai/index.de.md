@@ -46,11 +46,11 @@ Klassische `.pbix`-Dateien sind binäre ZIP-Archive, die für KI-Modelle unlesba
 * **Semantisches Modell:** Tabellen, Relationen und DAX-Measures liegen als TMDL-Dateien (Tabular Model Definition Language) vor.
 * **Berichtsdefinition:** Diagramme, Formatierungen und Filterstrukturen liegen als strukturierte JSON-Dateien vor.
 
-Ein Coding-Agent (wie Claude Code oder ein CLI-basierter Agent) kann direkt im Projektordner arbeiten, die TMDL-Strukturen analysieren und neue Measures in den Code schreiben. Das funktioniert sofort ohne zusätzliche Middleware oder geöffnete Software.
+Ein Coding-Agent (wie Claude Code oder ein CLI-basierter Agent) kann direkt im Projektordner arbeiten, die TMDL-Strukturen analysieren und neue Measures in den Code schreiben. Das funktioniert sofort ohne zusätzliche Middleware, ohne API-Einrichtung und ohne laufendes Power BI Desktop.
 
 ### Reale Einschränkungen von Pfad 1
 
-Trotz der perfekten Eignung für Git und CI/CD hat dieser rein dateibasierte Ansatz klare Nachteile:
+Obwohl das PBIP-Dateiformat die ideale Klartext-Grundlage bietet, hat die reine Dateibearbeitung ohne laufende Engine entscheidende Nachteile:
 
 * **Keine Live-Syntaxprüfung:** Der Agent schreibt DAX-Formeln blind in die Textdateien. Syntaxfehler fallen erst auf, wenn das Projekt in Power BI Desktop geöffnet oder neu geladen wird.
 * **Keine Testabfragen:** Der Agent kann keine `execute_dax`-Abfragen ausführen, um zu prüfen, ob die Berechnung mit den echten Daten übereinstimmt.
@@ -84,12 +84,14 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 }
 ```
 
-3. **Verbindung zur Sitzung:** Power BI Desktop mit dem Datenmodell öffnen, egal ob als `.pbix` oder als `.pbip` gespeichert. Ein Prompt an die KI genügt: *"Verbinde dich mit meiner aktiven Power BI Sitzung."*
+3. **Verbindung zur Sitzung:** Power BI Desktop mit dem Datenmodell öffnen. Das funktioniert sowohl mit traditionellen `.pbix`-Dateien als auch mit modernen `.pbip`-Projekten. Ein Prompt an die KI genügt: *"Verbinde dich mit meiner aktiven Power BI Sitzung."*
 
 ![MCP Server aktiv in Claude Desktop](claude_mcp_running.jpg)
 *Der Power BI Modeling MCP Server aktiv verbunden in Claude Desktop.*
 
 Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Analysis-Services-Instanz startet, dockt der MCP-Server direkt an diesen lokalen Port an. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
+
+Wird ein PBIP-Projekt auf diesem Weg bearbeitet und anschließend in Power BI Desktop gespeichert, landen alle von der KI erstellten Measures sauber in den TMDL-Dateien auf der Festplatte. Man kombiniert damit die Live-Validierung der Engine mit der vollen Git-Versionskontrolle von PBIP.
 
 ---
 
@@ -97,9 +99,9 @@ Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Anal
 
 Microsoft bietet mit Copilot auch eine direkt integrierte KI-Funktion in der Cloud-Oberfläche und im Desktop an.
 
-* **Fokus auf Canvas und Layout:** Copilot erstellt fertige Visuals und Berichtsseiten direkt auf der Canvas im Microsoft-Ökosystem, eignet sich aber kaum für tiefe semantische Modellierung.
-* **Cloud-gebunden:** Auch im Desktop läuft die Berechnung immer in der Microsoft Cloud und setzt eine aktive Fabric-Kapazität (mindestens F64 SKU) im Mandanten voraus.
-* **Kosten und Vendor Lock-in:** Hohe Plattformkosten für dedizierte Kapazitäten und ein geschlossenes System ohne Eingriffsmöglichkeiten in System-Prompts oder externe Entwickler-Tools.
+* **Fokus auf Ökosystem und Canvas:** Der größte Vorteil von Copilot liegt im Microsoft-Ökosystem: Governance, Compliance und die automatisierte Erstellung von Berichtsseiten und Visuals direkt auf der Canvas. Für anspruchsvolle semantische Datenmodellierung und komplexe DAX-Logik ist das System hingegen kaum ausgelegt.
+* **Immer cloud-gebunden:** Auch bei der Nutzung in Power BI Desktop läuft die Berechnung niemals lokal auf dem Rechner. Sämtliche Abfragen werden in der Microsoft Cloud verarbeitet und setzen eine zugewiesene Microsoft Fabric Kapazität (mindestens F64 SKU) im Mandanten voraus.
+* **Kosten und Plattform-Bindung:** Dedizierte Fabric-Kapazitäten bedeuten erhebliche monatliche Plattformkosten. Zudem bleibt Copilot ein geschlossenes System ohne Eingriffsmöglichkeiten in System-Prompts oder externe Entwickler-Tools.
 
 ---
 
@@ -109,20 +111,24 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 
 | Anforderung / Funktion | Pfad 1: PBIP (Dateiebene) | Pfad 2: MCP Server (Live) | Pfad 3: Microsoft Copilot |
 | :--- | :--- | :--- | :--- |
-| **Unterstützte Formate** | Nur PBIP (Dateisystem) | Sowohl PBIX als auch PBIP | Sowohl PBIX als auch PBIP |
+| **Unterstützte Dateiformate** | Nur PBIP (Dateisystem) | Sowohl PBIX als auch PBIP | Sowohl PBIX als auch PBIP |
 | **DAX-Measures erstellen** | Ja (Stapelverarbeitung in TMDL) | Ja (direkt im Modell injiziert) | Ja (über Chat-Prompt) |
 | **Live-Syntaxprüfung** | Nein (blinde Textbearbeitung) | Ja (sofortiges Engine-Feedback) | Eingeschränkt (nur Heuristik) |
 | **DAX-Testabfragen (`execute_dax`)** | Nein (keine laufende Engine) | Ja (direkte Abfrage der Engine) | Nein |
-| **Git-Versionskontrolle & CI/CD** | Exzellent (reine Text-Diffs) | Bei PBIP nach Speichern nutzbar | Keine (Cloud-gebunden) |
+| **Git-Versionskontrolle & CI/CD** | Exzellent (reine TMDL-Text-Diffs) | Bei PBIP nach Speichern voll nutzbar | Keine direkte Git-Integration |
 | **Hardware-Anforderungen** | Minimal (CLI oder Code-Editor) | Hoch (Desktop-App und RAM) | Keine (Cloud-Hosting) |
-| **Datenschutz** | Abhängig vom gewählten LLM | Abhängig vom gewählten LLM | Gespeichert in Microsoft Cloud |
-| **DirectQuery-Unterstützung** | Eingeschränkt (nur Metadaten) | Komplex (Abfrage-Latenz) | Ja (native Cloud-Unterstützung) |
-| **Visuelles Layout & Diagramme** | Eingeschränkt (blinde JSON-Bearbeitung) | Nein (reiner Modellierungsfokus) | Ja (erstellt Visuals auf der Canvas) |
+| **Datenschutz & Inferenz-Ort** | Abhängig vom gewählten LLM | Abhängig vom gewählten LLM | Immer in Microsoft Cloud |
+| **Visuelles Layout auf Canvas** | Eingeschränkt (blinde JSON-Bearbeitung) | Nein (reiner Modellierungsfokus) | Ja (erstellt Visuals auf der Canvas) |
 | **Individuelle SVG-Karten & HTML** | Eingeschränkt (blinder DAX-Code) | Exzellent (sofortige visuelle Vorschau) | Unbrauchbar (nur Standard-Visuals) |
 | **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Hoch (Fabric F64 oder User-Lizenz) |
-| **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktives Fabric Cloud-Abonnement |
+| **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktive Fabric Cloud-Kapazität |
 
-*Zusammenfassend eignet sich Pfad 1 für Headless-Skripte ohne Setup, Pfad 2 für die aktive Entwicklung mit Live-Validierung, und Pfad 3 für standardisierte Canvas-Berichte im Microsoft-Ökosystem.*
+### Klare Entscheidungshilfe für die Praxis
+
+* **PBIP als Dateiformat wählen**, sobald Versionskontrolle in Git, Teamarbeit und CI/CD-Pipelines gefordert sind. Das ist eine Format-Entscheidung, keine Tool-Entscheidung.
+* **Pfad 1 (Dateiebene) wählen**, wenn man ohne jegliche Einrichtung, ohne geöffnete Desktop-App oder in automatisierten Headless-Skripten Measures stapelweise generieren will.
+* **Pfad 2 (MCP Live-Sitzung) wählen**, wenn man aktiv am Arbeitsplatz modelliert und sofortiges Feedback der Engine, Syntax-Fehlerkorrektur und DAX-Testabfragen benötigt.
+* **Pfad 3 (Microsoft Copilot) wählen**, wenn fertige Berichts-Layouts direkt auf der Canvas im regulierten Microsoft-Ökosystem generiert werden sollen und Fabric-Kapazitäten bereitstehen.
 
 ---
 
@@ -142,7 +148,7 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 
 ## Fazit
 
-1. **PBIP ist das Pflichtfundament:** Wer Datenmodelle professionell in Git versionieren will, muss das binäre PBIX-Format verlassen. Versionskontrolle ist eine Eigenschaft des Dateiformats, nicht des KI-Tools.
+1. **PBIP ist das Pflichtfundament:** Wer Datenmodelle professionell in Git versionieren und in CI/CD einbinden will, muss das binäre PBIX-Format verlassen. Versionskontrolle ist eine fundamentale Eigenschaft des Dateiformats, nicht des verwendeten KI-Tools.
 2. **MCP entscheidet die Entwicklung für sich:** Reine Dateisystem-Agenten scheitern an fehlender Syntax-Validierung, während Copilot ein teures Komfort-Werkzeug für Standard-Visuals bleibt. Für anspruchsvolle semantische Modellierung, komplexe DAX-Logik und maßgeschneiderte SVG-Karten ist die Live-Verbindung über MCP der mit Abstand produktivste Weg.
 
 ---

@@ -45,11 +45,11 @@ The standard `.pbix` format is a compressed binary archive. An AI model cannot i
 * **Semantic Model:** Tables, relationships, and DAX measures are stored in TMDL (Tabular Model Definition Language) files.
 * **Report Definition:** Visuals, layouts, and filters are stored in JSON format.
 
-A coding agent (such as Claude Code or any terminal-based agent) can open this directory, read the TMDL files, understand the schema, and write new measures directly into the source code. This works immediately without extra middleware or open software.
+A coding agent (such as Claude Code or any terminal-based agent) can open this directory, read the TMDL files, understand the schema, and write new measures directly into the source code. This works immediately without extra middleware, without API configuration, and without opening Power BI Desktop.
 
 ### Practical Limitations of Path 1
 
-While file-based editing integrates directly with Git workflows, it comes with clear constraints:
+While the PBIP file format provides the ideal plain-text foundation, editing files directly without a running engine has decisive limitations:
 
 * **No live syntax validation:** The agent writes DAX formulas into text files blindly. Syntax errors are only caught when you open or reload the project in Power BI Desktop.
 * **No test execution:** The agent cannot run `execute_dax` queries to verify calculation results against actual data.
@@ -83,12 +83,14 @@ The Visual Studio Code Extension **Power BI Modeling MCP Server** bundles a stan
 }
 ```
 
-3. **Connect to the session:** Open Power BI Desktop with your data model, whether saved as `.pbix` or `.pbip`. Prompt the AI: *"Connect to my active Power BI session."*
+3. **Connect to the session:** Open Power BI Desktop with your data model. This works with both traditional `.pbix` files and modern `.pbip` projects. Prompt the AI: *"Connect to my active Power BI session."*
 
 ![MCP Server Active in Claude Desktop](claude_mcp_running.jpg)
 *The Power BI Modeling MCP Server actively connected in Claude Desktop.*
 
 Because Power BI Desktop starts a local Analysis Services instance in the background for every open model, the MCP server connects directly to that local port. The AI gains structured tools: inspect schema, create measures, and run DAX queries directly. If the engine returns a syntax error, the AI receives that feedback in the same turn and self-corrects the code.
+
+When a PBIP project is edited this way and subsequently saved in Power BI Desktop, all measures created by the AI are saved directly into the TMDL files on disk. This combines live engine validation via MCP with the full Git version control of PBIP.
 
 ---
 
@@ -96,9 +98,9 @@ Because Power BI Desktop starts a local Analysis Services instance in the backgr
 
 Microsoft also offers built-in AI capabilities directly inside the Power BI service and desktop through Copilot.
 
-* **Focus on Canvas and Layout:** Copilot creates report pages and standard visuals directly on the canvas in the Microsoft ecosystem, but is rarely suited for deep semantic modeling.
-* **Cloud-Bound:** Processing always takes place in the Microsoft Cloud, requiring an active connection and assigned Fabric capacity (F64 SKU minimum) in the tenant.
-* **Platform Costs and Vendor Lock-in:** High dedicated capacity fees and a closed architecture without custom system prompts or external developer tool access.
+* **Focus on Ecosystem and Canvas:** Copilot's greatest strength lies in the Microsoft ecosystem: enterprise governance, compliance, and automated creation of report pages and visuals directly on the canvas. It is rarely suited for demanding semantic data modeling or complex DAX logic.
+* **Always Cloud-Bound:** Even when used inside Power BI Desktop, processing never runs locally on your PC. All queries are handled in the Microsoft Cloud and require an assigned Microsoft Fabric capacity (minimum F64 SKU) in the tenant.
+* **Platform Costs and Vendor Lock-in:** Dedicated Fabric capacities require substantial recurring platform fees, and Copilot remains a closed platform without custom system prompts or external developer tool access.
 
 ---
 
@@ -112,16 +114,20 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 | **DAX Measure Creation** | Yes (batch plain text in TMDL) | Yes (direct injection into engine) | Yes (chat prompt) |
 | **Live Syntax Validation** | No (blind text edits) | Yes (instant engine feedback) | Partial (heuristics only) |
 | **DAX Query Testing (`execute_dax`)** | No (no running engine) | Yes (direct engine query) | No |
-| **Git Version Control & CI/CD** | Excellent (native text diffs) | Available with PBIP after saving | None (tied to Microsoft cloud) |
+| **Git Version Control & CI/CD** | Excellent (pure TMDL text diffs) | Available with PBIP after saving | No direct Git integration |
 | **Hardware Requirements** | Minimal (CLI or code editor) | High (Desktop app and RAM) | None (cloud hosting) |
-| **Data Privacy** | Controlled by chosen LLM | Controlled by chosen LLM | Stored in Microsoft Cloud |
-| **DirectQuery Support** | Limited (metadata only) | Complex (query latency) | Yes (native cloud support) |
+| **Data Privacy & Inference Location** | Controlled by chosen LLM | Controlled by chosen LLM | Always in Microsoft Cloud |
 | **Visual Canvas Layout** | Limited (blind JSON edits) | No (modeling focus only) | Yes (generates canvas visuals) |
 | **Custom SVG Cards & HTML Visuals** | Limited (blind DAX string) | Excellent (live visual preview) | Poor (standard visuals only) |
 | **Cost & Model Flexibility** | Free (any LLM or local model) | Free (any MCP client) | High (Fabric F64 or user license) |
-| **Runtime Requirement** | Code editor only (CLI) | Power BI Desktop open locally | Active Fabric cloud subscription |
+| **Runtime Requirement** | Code editor only (CLI) | Power BI Desktop open locally | Active Fabric cloud capacity |
 
-*In summary: Path 1 excels at headless scripting without setup, Path 2 is the clear choice for active modeling with live validation, and Path 3 automates canvas layout within the Microsoft ecosystem.*
+### Clear Practical Decision Guidance
+
+* **Choose PBIP as your file format** whenever Git version control, team collaboration, and CI/CD pipelines are required. This is a format decision, not a tool decision.
+* **Choose Path 1 (File Level)** when you want to batch-generate measures without any setup, without opening Power BI Desktop, or inside automated headless scripts.
+* **Choose Path 2 (MCP Live Session)** when actively modeling at your desk and you require instant engine feedback, syntax error correction, and DAX test queries.
+* **Choose Path 3 (Microsoft Copilot)** when report canvas layouts need to be generated automatically inside the governed Microsoft ecosystem and Fabric capacity is available.
 
 ---
 
@@ -141,8 +147,8 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 
 ## Conclusion
 
-1. **PBIP is the mandatory foundation:** Versioning data models in Git requires moving away from binary PBIX files. Version control is a property of the file format, not of the AI tool.
-2. **MCP decisively wins active modeling:** Plain filesystem agents lack syntax validation, while Copilot remains an expensive convenience tool for generic canvas visuals. For precise semantic modeling, complex DAX logic, and dynamic SVG cards, live engine connection via MCP is the most productive approach by far.
+1. **PBIP is the mandatory foundation:** Versioning data models in Git and connecting CI/CD pipelines requires leaving binary PBIX files behind. Version control is a fundamental property of the file format, not of the AI tool used.
+2. **MCP decisively wins active modeling:** Plain filesystem agents fail on missing syntax validation, while Copilot remains an expensive convenience tool for generic canvas visuals. For demanding semantic modeling, complex DAX logic, and bespoke SVG cards, live engine connection via MCP is by far the most productive path.
 
 ---
 
