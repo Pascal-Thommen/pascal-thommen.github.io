@@ -1,12 +1,12 @@
 ---
-title: "How to Use Power BI with AI: PBIP, MCP, and Practical Architecture"
+title: "Power BI with AI: PBIP and MCP in Practice"
 date: 2026-10-06T18:00:00Z
 description: "How do you connect Power BI with AI agents? A hands-on look at PBIP files, the Power BI Modeling MCP Server, database connections, and limitations."
-summary: "One of the key questions at the hackathon was: How do you connect Power BI with AI? Here is the actual architecture: PBIP files, the MCP server, and how data layers interact."
+summary: "At the 3rd Business Intelligence & AI Hackathon, one question took center stage: How do you reliably control a Power BI model with AI agents without operating blindly? A breakdown of PBIP, MCP, and Copilot."
 tags: ["Power BI", "Artificial Intelligence", "MCP", "Business Intelligence", "Business Informatics"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
-hidemeta: true
+hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 aliases:
@@ -14,17 +14,17 @@ aliases:
   - "/en/posts/power-bi-mit-ki/"
 ---
 
-One of the key questions at the hackathon was: How do you connect Power BI with AI? More specifically: How do you use AI agents to model and automate Power BI?
+At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents without operating blindly?
 
-![Participants and mentors at the 3rd BI Hackathon by Comunidad Data Platform Paraguay](hackathon_group.jpg)
-*Participants and mentors at the 3rd BI Hackathon by Comunidad Data Platform Paraguay (Asuncion, October 3, 2026).*
+![Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana](hackathon_group.jpg)
+*Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana (October 3, 2026).*
 
-In practice, there are three primary paths to bring AI into Power BI:
-1. File-based editing via the PBIP format (offline, Git-integrated).
-2. Live session control via the Model Context Protocol (MCP).
-3. Native cloud features via Microsoft Copilot.
+Three distinct paths exist in practice:
+* **File Level (PBIP):** Editing Git-integrated TMDL files offline with coding agents.
+* **Live Session (MCP):** Driving the active Power BI Desktop instance through Microsoft's Analysis Services MCP server.
+* **Cloud (Microsoft Copilot):** Using built-in AI capabilities within Microsoft Fabric.
 
-None of these three options can do everything, and they are not equally suited for every task. Understanding where data connections sit, what each approach can actually deliver, and where its limits lie determines whether AI automation succeeds in practice.
+Each path solves a different problem. None can do everything.
 
 ---
 

@@ -1,12 +1,12 @@
 ---
-title: "Wie verwendet man Power BI mit KI: PBIP, MCP und die Praxis-Architektur"
+title: "Power BI mit KI: PBIP und MCP in der Praxis"
 date: 2026-10-06T18:00:00Z
 description: "Wie verbindet man Power BI mit KI-Agenten? Ein technischer Blick auf PBIP-Dateien, den Power BI Modeling MCP Server, Datenbankanbindungen und Grenzen."
-summary: "Eine der wichtigsten Fragen beim Hackathon war: Wie verbindet man Power BI mit KI? Hier ist die reale Architektur: PBIP-Dateien, der MCP-Server und wie die Daten- und Modellebenen zusammenspielen."
+summary: "Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten, ohne im Blindflug zu landen?"
 tags: ["Power BI", "Künstliche Intelligenz", "MCP", "Business Intelligence", "Wirtschaftsinformatik"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
-hidemeta: true
+hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 aliases:
@@ -14,17 +14,17 @@ aliases:
   - "/de/posts/power-bi-mit-ki/"
 ---
 
-Eine der wichtigsten Fragen beim Hackathon war: Wie verbindet man Power BI mit KI? Konkret: Wie steuert und automatisiert man Datenmodelle in Power BI mit KI-Agenten?
+Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten, ohne im Blindflug zu landen?
 
-![Teilnehmer und Mentoren beim 3. BI Hackathon der Comunidad Data Platform Paraguay](hackathon_group.jpg)
-*Teilnehmer und Mentoren beim 3. BI Hackathon der Comunidad Data Platform Paraguay (3. Oktober 2026).*
+![Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana](hackathon_group.jpg)
+*Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana (3. Oktober 2026).*
 
-In der Praxis existieren dafür drei wesentliche Wege:
-1. Dateibasierte Modellierung über das PBIP-Format (offline, voll versionierbar in Git).
-2. Live-Sitzungssteuerung über das Model Context Protocol (MCP).
-3. Cloud-Funktionen über Microsoft Copilot.
+Drei Ansätze stehen in der Praxis zur Auswahl:
+* **Dateiebene (PBIP):** Git-basierte TMDL-Dateien offline mit Coding-Agenten bearbeiten.
+* **Live-Sitzung (MCP):** Über Microsofts Analysis Services MCP Server direkt in die offene Power BI Desktop Instanz eingreifen.
+* **Cloud (Microsoft Copilot):** Fertige KI-Funktionen in Microsoft Fabric nutzen.
 
-Keine dieser drei Optionen kann alles, und sie sind nicht für jede Aufgabe gleich gut geeignet. Wie beide Seiten funktionieren, an welcher Stelle die Datenbank angebunden wird und wo die realen Grenzen liegen, entscheidet darüber, ob der Einsatz im Geschäftsbetrieb funktioniert.
+Jeder dieser Pfade löst ein anderes Problem. Keiner kann alles.
 
 ---
 

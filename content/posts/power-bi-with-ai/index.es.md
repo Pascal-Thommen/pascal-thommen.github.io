@@ -1,12 +1,12 @@
 ---
-title: "Cómo usar Power BI con IA: PBIP, MCP y la arquitectura en la práctica"
+title: "Power BI con IA: PBIP y MCP en la práctica"
 date: 2026-10-06T18:00:00Z
 description: "¿Cómo conectar Power BI con agentes de IA? Un análisis técnico de archivos PBIP, el servidor MCP de modelado, conexiones a bases de datos y limitaciones."
-summary: "Una de las preguntas clave en el hackathon fue: ¿Cómo conectar Power BI con IA? Aquí está la arquitectura real: archivos PBIP, el servidor MCP y cómo interactúan las capas de datos."
+summary: "En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA sin perder el control?"
 tags: ["Power BI", "Inteligencia Artificial", "MCP", "Business Intelligence", "Informática Empresarial"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
-hidemeta: true
+hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 aliases:
@@ -14,17 +14,17 @@ aliases:
   - "/es/posts/power-bi-mit-ki/"
 ---
 
-Una de las preguntas clave en el hackathon fue: ¿Cómo conectar Power BI con IA? Concretamente: ¿Cómo modelar y automatizar modelos de datos en Power BI utilizando agentes de IA?
+En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA sin perder el control?
 
-![Participantes y mentores en el 3er BI Hackathon de la Comunidad Data Platform Paraguay](hackathon_group.jpg)
-*Participantes y mentores en el 3er BI Hackathon de la Comunidad Data Platform Paraguay (Asunción, 3 de octubre de 2026).*
+![Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana](hackathon_group.jpg)
+*Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana (3 de octubre de 2026).*
 
-En la práctica existen tres caminos principales para integrar IA con Power BI:
-1. Modelado basado en archivos mediante el formato PBIP (offline, integrable con Git).
-2. Control en sesión viva mediante el Model Context Protocol (MCP).
-3. Funcionalidades en la nube mediante Microsoft Copilot.
+En la práctica existen tres opciones principales:
+* **Nivel de archivos (PBIP):** Editar archivos TMDL integrados con Git mediante agentes de código.
+* **Sesión en vivo (MCP):** Interactuar con la instancia activa de Power BI Desktop a través del servidor MCP de Analysis Services.
+* **Nube (Microsoft Copilot):** Utilizar las capacidades integradas de IA en Microsoft Fabric.
 
-Ninguna de estas tres opciones puede hacerlo todo, ni son igual de eficaces para cada tarea. Entender cómo funciona cada vía, en qué punto se conecta la base de datos y cuáles son los límites reales determina si la automatización con IA funciona en un entorno operativo.
+Cada vía resuelve una necesidad diferente. Ninguna lo cubre todo.
 
 ---
 

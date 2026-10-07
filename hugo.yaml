@@ -22,8 +22,8 @@ params:
   ShowPostNavLinks: false
   ShowBreadCrumbs: true
   ShowCodeCopyButtons: true
-  disableSpecial1stPost: true
-  hideMeta: true
+  hideMeta: false
+  hideAuthor: true
   label:
     text: "Pascal Thommen"
   socialIcons:
