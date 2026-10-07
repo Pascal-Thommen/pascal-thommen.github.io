@@ -1,6 +1,6 @@
 ---
 title: "Contacto"
-description: "Ponte en contacto con Pascal Thommen por correo electrónico o WhatsApp."
+description: "Contacto directo con Pascal Thommen."
 layout: "single"
 hidemeta: true
 ShowBreadCrumbs: false
