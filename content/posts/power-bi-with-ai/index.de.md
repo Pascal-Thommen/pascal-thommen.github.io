@@ -86,18 +86,12 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 }
 ```
 
-3. **Verbindung zur Sitzung:** Sobald Power BI Desktop mit einem Modell geöffnet ist, läuft im Hintergrund eine lokale Analysis-Services-Instanz. Ein Prompt an die KI genügt: *"Verbinde dich mit meiner aktiven Power BI Sitzung."*
+3. **Verbindung zur Sitzung:** Power BI Desktop mit dem Datenmodell öffnen, egal ob als `.pbix` oder als `.pbip` gespeichert. Ein Prompt an die KI genügt: *"Verbinde dich mit meiner aktiven Power BI Sitzung."*
 
 ![MCP Server aktiv in Claude Desktop](claude_mcp_running.jpg)
 *Der Power BI Modeling MCP Server aktiv verbunden in Claude Desktop.*
 
-Der MCP-Server dockt an den lokalen Port an. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
-
-### Kompatibel mit PBIX und PBIP
-
-Ein häufiges Missverständnis ist, dass MCP zwingend das neue PBIP-Format voraussetzt. Das stimmt nicht:
-* **PBIP ist nur für Pfad 1 zwingend erforderlich**, da der KI-Agent dort TMDL-Dateien direkt auf der Festplatte bearbeitet, ohne dass Power BI Desktop geöffnet sein muss.
-* **MCP dockt an die aktive Analysis-Services-Instanz an**, die Power BI Desktop im Hintergrund für jedes geöffnete Modell startet. Ob die Datei als `.pbip` oder als klassische binäre `.pbix` gespeichert ist, spielt für den MCP-Server keine Rolle.
+Da Power BI Desktop für jedes geöffnete Modell im Hintergrund eine lokale Analysis-Services-Instanz startet, dockt der MCP-Server direkt an diesen lokalen Port an, unabhängig davon, ob die Datei als `.pbix` oder `.pbip` vorliegt. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
 
 ---
 
@@ -105,9 +99,9 @@ Ein häufiges Missverständnis ist, dass MCP zwingend das neue PBIP-Format vorau
 
 Microsoft bietet mit Copilot auch eine direkt integrierte KI-Funktion in der Cloud-Oberfläche und im Desktop an.
 
-* **Kosten und Lizenzierung:** Microsoft Copilot in Power BI erfordert bezahlte Cloud-Kapazität. Während einfache Chat-Assistenten in Microsoft 365 oder Power BI Desktop per-User-Lizenzen (rund 30 USD pro Benutzer im Monat) verlangen, setzen voll integrierte Copilot-Funktionen in Power BI Workspaces dedizierte Microsoft Fabric Kapazitäten voraus (mindestens F64 SKU oder Pay-as-you-go Kapazitätseinheiten). Das führt zu starkem Vendor Lock-in und hohen Fixkosten im Vergleich zu offenen LLM-APIs.
-* **Geschlossenes System:** Copilot agiert als proprietäre Cloud-Blackbox ohne Eingriffsmöglichkeiten in Prompts, Workflows oder externe Werkzeugketten.
-* **Fokus:** Copilot richtet sich vor allem an Fachanwender für Berichts-Zusammenfassungen und einfache Standard-Diagramme, nicht an die tiefe Datenmodellierung.
+* **Kosten und Lizenzierung:** Copilot setzt bezahlte Cloud-Kapazität voraus, entweder über Nutzer-Add-ons (rund 30 USD monatlich pro Nutzer) oder dedizierte Microsoft Fabric Kapazitäten (mindestens F64 SKU). Das führt zu spürbarem Vendor Lock-in und hohen Fixkosten im Vergleich zu offenen LLM-APIs.
+* **Geschlossenes System:** Copilot agiert als verwalteter Cloud-Dienst ohne Eingriffsmöglichkeiten in System-Prompts, Agenten-Ketten oder externe Entwickler-Tools.
+* **Fokus:** Ausgelegt auf Fachanwender für schnelle Text-Zusammenfassungen und Standard-Diagramme, nicht auf fundierte semantische Modellierung.
 
 ---
 

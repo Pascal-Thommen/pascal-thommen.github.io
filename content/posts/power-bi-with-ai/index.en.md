@@ -86,18 +86,12 @@ Microsoft provides the **Power BI Modeling MCP Server** extension for Visual Stu
 }
 ```
 
-3. **Connect to the Active Session:** Open Power BI Desktop with your data model. Then prompt the AI: *"Connect to my active Power BI session."*
+3. **Connect to the Active Session:** Open Power BI Desktop with your data model, saved as either `.pbix` or `.pbip`. Then prompt the AI: *"Connect to my active Power BI session."*
 
 ![MCP Server running in Claude Desktop](claude_mcp_running.jpg)
 *The Power BI Modeling MCP Server connected and running inside Claude Desktop.*
 
-Because Power BI Desktop runs a local Analysis Services instance in the background, the MCP server attaches to its local port. The AI receives functional tools: inspecting tables, creating measures, and running DAX test queries. If a formula fails, the engine returns the error message immediately, allowing the AI to self-correct in real time.
-
-### Works with Both PBIX and PBIP
-
-A frequent question is whether MCP requires the new PBIP format. The answer is no:
-* **PBIP is only mandatory for Path 1**, where an AI agent reads and edits TMDL text files on disk without running Power BI Desktop.
-* **MCP attaches to the active Analysis Services instance** that Power BI Desktop spins up locally whenever any report is open. Whether that file was saved as `.pbip` or as a legacy `.pbix` binary archive does not matter to the MCP server.
+Because Power BI Desktop runs a local Analysis Services instance in the background for any open report, the MCP server attaches directly to its local port regardless of whether the file on disk is a `.pbix` archive or a `.pbip` folder. The AI receives functional tools: inspecting tables, creating measures, and running DAX test queries. If a formula fails, the engine returns the error message immediately, allowing the AI to self-correct in real time.
 
 ---
 
@@ -105,9 +99,9 @@ A frequent question is whether MCP requires the new PBIP format. The answer is n
 
 Microsoft also offers built-in AI capabilities directly inside the Power BI service and desktop through Copilot.
 
-* **Cost and Licensing:** Microsoft Copilot in Power BI requires paid capacity. While individual chat assistance in Microsoft 365 or Power BI Desktop requires per-user add-on licenses ($30 per user per month), full organizational Copilot integration in Power BI workspaces requires dedicated Microsoft Fabric capacity (minimum F64 SKU or pay-as-you-go capacity units). This creates significant recurring cost barriers and vendor lock-in compared to open LLM APIs.
-* **Closed Ecosystem:** Copilot is a closed cloud feature. It does not allow custom prompt engineering, agentic chaining, or external tool execution.
-* **Primary Focus:** Copilot is designed primarily for non-technical users to generate summary descriptions and basic visual layouts rather than deep data model engineering.
+* **Cost and Licensing:** Copilot requires paid cloud capacity, either through per-user add-ons ($30 per user monthly) or dedicated Microsoft Fabric capacity (minimum F64 SKU). This introduces substantial recurring costs and platform lock-in compared to open LLM APIs.
+* **Closed Ecosystem:** Copilot operates as a managed cloud feature without options for custom prompt engineering, agentic workflows, or external developer tooling.
+* **Primary Focus:** Built primarily for business users to generate summary texts and standard visual layouts rather than deep data model engineering.
 
 ---
 
