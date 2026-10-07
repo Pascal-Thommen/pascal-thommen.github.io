@@ -2,7 +2,7 @@
 title: "Power BI con IA: PBIP y MCP en la práctica"
 date: 2026-10-06T18:00:00Z
 description: "¿Cómo conectar Power BI con agentes de IA? Un análisis técnico de archivos PBIP, Power BI Modeling MCP Server, conexión a bases de datos y límites reales."
-summary: "En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA? Comparativa técnica de PBIP, MCP y Copilot."
+summary: "En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA (organizada por Data Platform Paraguay en la Universidad Americana), el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA? Comparativa técnica de PBIP, MCP y Copilot."
 tags: ["Power BI", "Inteligencia Artificial", "MCP", "Business Intelligence", "Informática Empresarial"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -14,10 +14,10 @@ aliases:
   - "/es/posts/power-bi-con-ia/"
 ---
 
-En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA?
+En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA, organizada por Data Platform Paraguay en la Universidad Americana, el debate central fue concreto: ¿Cómo controlar un modelo de Power BI de forma confiable mediante agentes de IA?
 
-![Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana](hackathon_group.jpg)
-*Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana (3 de octubre de 2026).*
+![Participantes y mentores en la 3ra Edición de la Hackathon de BI e IA organizada por Data Platform Paraguay](hackathon_group.jpg)
+*Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA, organizada por Data Platform Paraguay en la sede de la Universidad Americana (3 de octubre de 2026).*
 
 En la práctica existen tres opciones principales:
 * **Nivel de archivos (PBIP):** Edición directa de archivos de texto TMDL en el sistema de archivos con agentes de código. Funciona de inmediato sin necesidad de abrir Power BI Desktop y sin ninguna configuración previa.

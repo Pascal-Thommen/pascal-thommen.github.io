@@ -2,7 +2,7 @@
 title: "Power BI mit KI: PBIP und MCP in der Praxis"
 date: 2026-10-06T18:00:00Z
 description: "Wie verbindet man Power BI mit KI-Agenten? Ein technischer Blick auf PBIP-Dateien, den Power BI Modeling MCP Server, Datenbankanbindungen und Grenzen."
-summary: "Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten? Ein technischer Vergleich von PBIP, MCP und Copilot."
+summary: "Beim 3. Hackathon für Business Intelligence und KI (veranstaltet von Data Platform Paraguay an der Universidad Americana) stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten? Ein technischer Vergleich von PBIP, MCP und Copilot."
 tags: ["Power BI", "Künstliche Intelligenz", "MCP", "Business Intelligence", "Wirtschaftsinformatik"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -14,10 +14,10 @@ aliases:
   - "/de/posts/power-bi-mit-ki/"
 ---
 
-Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten?
+Beim 3. Hackathon für Business Intelligence und KI, veranstaltet von Data Platform Paraguay an der Universidad Americana, stand eine zentrale Frage im Raum: Wie steuert man ein Power-BI-Modell verlässlich mit KI-Agenten?
 
-![Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana](hackathon_group.jpg)
-*Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana (3. Oktober 2026).*
+![Teilnehmer und Mentoren beim 3. BI- und KI-Hackathon von Data Platform Paraguay](hackathon_group.jpg)
+*Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI, veranstaltet von Data Platform Paraguay an der Universidad Americana (3. Oktober 2026).*
 
 Drei Ansätze stehen in der Praxis zur Auswahl:
 * **Dateiebene (PBIP):** Direkte Bearbeitung von TMDL-Textdateien im Dateisystem mit Coding-Agenten. Funktioniert sofort ohne laufendes Power BI Desktop und ohne jede Einrichtung.

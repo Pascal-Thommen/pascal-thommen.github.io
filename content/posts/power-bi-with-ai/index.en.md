@@ -2,7 +2,7 @@
 title: "Power BI with AI: PBIP and MCP in Practice"
 date: 2026-10-06T18:00:00Z
 description: "How do you connect Power BI with AI agents? A technical comparison of PBIP files, the Power BI Modeling MCP Server, database connections, and real limits."
-summary: "At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents? A technical comparison of PBIP, MCP, and Copilot."
+summary: "At the 3rd Business Intelligence & AI Hackathon (organized by Data Platform Paraguay at Universidad Americana), one question took center stage: How do you reliably control a Power BI model with AI agents? A technical comparison of PBIP, MCP, and Copilot."
 tags: ["Power BI", "Artificial Intelligence", "MCP", "Business Intelligence", "Business Informatics"]
 categories: ["Business Intelligence", "AI Engineering"]
 author: "Pascal Thommen"
@@ -13,10 +13,10 @@ aliases:
   - "/posts/power-bi-with-ai/"
 ---
 
-At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents?
+At the 3rd Business Intelligence & AI Hackathon, organized by Data Platform Paraguay at Universidad Americana, one question took center stage: How do you reliably control a Power BI model with AI agents?
 
-![Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana](hackathon_group.jpg)
-*Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana (October 3, 2026).*
+![Participants and mentors at the 3rd BI & AI Hackathon organized by Data Platform Paraguay](hackathon_group.jpg)
+*Participants and mentors at the 3rd Business Intelligence & AI Hackathon, organized by Data Platform Paraguay at Universidad Americana (October 3, 2026).*
 
 Three distinct paths exist in practice:
 * **File Level (PBIP):** Direct editing of TMDL text files on disk with coding agents. Works immediately without opening Power BI Desktop and without any setup.
