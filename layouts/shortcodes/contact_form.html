@@ -4,7 +4,7 @@
 
 {{ $title := cond $isDe "Schreib mir eine Nachricht" (cond $isEs "Envíame un mensaje" "Send me a message") }}
 {{ $subtitle := cond $isDe "Hinterlasse deine Nachricht und Kontaktdaten. Ich antworte per E-Mail oder WhatsApp." (cond $isEs "Deja tu mensaje y datos de contacto. Te responderé por correo electrónico o WhatsApp." "Leave your message and contact details. I will respond via Email or WhatsApp.") }}
-{{ $hint := cond $isDe "💡 Bitte gib mindestens einen Kontaktweg an (E-Mail oder WhatsApp), damit ich dir antworten kann." (cond $isEs "💡 Por favor, proporciona al menos un método de contacto (correo o WhatsApp) para que pueda responderte." "💡 Please provide at least one contact method (Email or WhatsApp) so I can reply to you.") }}
+{{ $hint := cond $isDe "Bitte gib mindestens einen Kontaktweg an (E-Mail oder WhatsApp), damit ich dir antworten kann." (cond $isEs "Por favor, proporciona al menos un método de contacto (correo o WhatsApp) para que pueda responderte." "Please provide at least one contact method (Email or WhatsApp) so I can reply to you.") }}
 {{ $labelName := cond $isDe "Name" (cond $isEs "Nombre" "Name") }}
 {{ $placeholderName := cond $isDe "Dein vollständiger Name" (cond $isEs "Tu nombre completo" "Your full name") }}
 {{ $labelEmail := cond $isDe "E-Mail-Adresse" (cond $isEs "Correo electrónico" "Email Address") }}
@@ -37,7 +37,6 @@
     </div>
 
     <div class="contact-info-badge">
-      <span class="contact-info-badge-icon">💡</span>
       <span>{{ $hint }}</span>
     </div>
 
