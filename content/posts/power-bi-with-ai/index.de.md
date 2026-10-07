@@ -125,11 +125,7 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 | **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Hoch (Fabric F64 oder User-Lizenz) |
 | **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktives Fabric Cloud-Abonnement |
 
-### Fazit der Fähigkeiten
-
-* **Headless Dateisystem-Agenten (Pfad 1) wählen**, wenn man sofort ohne Einrichtung loslegen will, auf Linux oder in CI-Pipelines arbeitet und TMDL-Dateien im Stapel bearbeiten möchte.
-* **MCP (Pfad 2) wählen**, wenn man aktiv am Arbeitsplatz modelliert und Live-Validierung, direkte Fehlerkorrektur der Engine sowie anspruchsvolle SVG-Visuals benötigt.
-* **Copilot (Pfad 3) wählen**, wenn ein Unternehmen bereits in Microsoft Fabric investiert ist und Standard-Berichtsseiten automatisiert auf der Canvas generieren lassen möchte.
+*Zusammenfassend eignet sich Pfad 1 für Headless-Skripte ohne Setup, Pfad 2 für die aktive Entwicklung mit Live-Validierung, und Pfad 3 für standardisierte Canvas-Berichte im Microsoft-Ökosystem.*
 
 ---
 
@@ -149,11 +145,10 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 
 ## Fazit
 
-Erfolgreiches BI-Engineering mit KI trennt strikt zwischen Dokumenttyp und Arbeitsmethode:
+Für die Praxis bleiben zwei zentrale Erkenntnisse:
 
-1. **PBIP ist das Pflichtfundament:** Wer Datenmodelle professionell versionieren, in Git verwalten und teamfähig machen will, muss das binäre PBIX-Format verlassen. Git-Integration ist eine Eigenschaft des Dateiformats, nicht des KI-Tools.
-2. **MCP deklassiert die Konkurrenz bei der Entwicklung:** Reine Dateisystem-Agenten scheitern an fehlender Syntax-Validierung, während Copilot ein teures Komfort-Werkzeug für Standard-Visuals bleibt. Für anspruchsvolle semantische Modellierung, komplexe DAX-Logik und maßgeschneiderte SVG-Karten ist die Live-Verbindung über MCP der mit Abstand produktivste Weg.
-3. **Menschliche Modellierungslogik bleibt unersetzlich:** Die KI beschleunigt die Generierung von Code drastisch, nimmt dem Entwickler aber weder Datenhygiene noch Architektur-Entscheidungen ab.
+1. **PBIP ist das Pflichtfundament:** Wer Datenmodelle professionell in Git versionieren will, muss das binäre PBIX-Format verlassen. Versionskontrolle ist eine Eigenschaft des Dateiformats, nicht des KI-Tools.
+2. **MCP entscheidet die Entwicklung für sich:** Reine Dateisystem-Agenten scheitern an fehlender Syntax-Validierung, während Copilot ein teures Komfort-Werkzeug für Standard-Visuals bleibt. Für anspruchsvolle semantische Modellierung, komplexe DAX-Logik und maßgeschneiderte SVG-Karten ist die Live-Verbindung über MCP der mit Abstand produktivste Weg.
 
 ---
 

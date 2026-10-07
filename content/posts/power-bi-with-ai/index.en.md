@@ -125,11 +125,7 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 | **Cost & Model Flexibility** | Free (any LLM or local model) | Free (any MCP client) | High (Fabric F64 or user license) |
 | **Runtime Requirement** | Code editor only (CLI) | Power BI Desktop open locally | Active Fabric cloud subscription |
 
-### Summary of Strengths
-
-* **Choose Filesystem Agents (Path 1)** when you need immediate headless execution without setup, work on Linux or CI environments, and want to batch-scaffold TMDL files.
-* **Choose MCP (Path 2)** for active hands-on modeling where immediate engine feedback, automated error correction, and custom SVG visuals are paramount.
-* **Choose Copilot (Path 3)** when your organization is already invested in Microsoft Fabric and needs automated report page generation on the visual canvas.
+*In summary: Path 1 excels at headless scripting without setup, Path 2 is the clear choice for active modeling with live validation, and Path 3 automates canvas layout within the Microsoft ecosystem.*
 
 ---
 
@@ -149,11 +145,10 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 
 ## Conclusion
 
-Professional BI engineering with AI requires a strict distinction between document format and working methodology:
+Two central findings emerge for practical engineering:
 
-1. **PBIP is the mandatory foundation:** Versioning data models cleanly in Git requires moving away from binary PBIX files. Git integration is a property of the file format, not of the AI tool.
-2. **MCP decisively wins active modeling:** Plain filesystem agents lack syntax validation, while Copilot remains an expensive convenience tool for generic visuals. For precise semantic modeling, complex DAX logic, and dynamic SVG cards, live engine connection via MCP is the most productive approach by far.
-3. **Analytical judgment remains human:** AI dramatically accelerates formula scaffolding, but it neither fixes poor data hygiene nor replaces sound business architecture.
+1. **PBIP is the mandatory foundation:** Versioning data models in Git requires moving away from binary PBIX files. Version control is a property of the file format, not of the AI tool.
+2. **MCP decisively wins active modeling:** Plain filesystem agents lack syntax validation, while Copilot remains an expensive convenience tool for generic canvas visuals. For precise semantic modeling, complex DAX logic, and dynamic SVG cards, live engine connection via MCP is the most productive approach by far.
 
 ---
 

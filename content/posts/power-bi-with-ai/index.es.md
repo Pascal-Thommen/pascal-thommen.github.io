@@ -125,11 +125,7 @@ Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta vent
 | **Costo y flexibilidad de modelos** | Gratuito (cualquier LLM o local) | Gratuito (cualquier cliente MCP) | Alto (licencia de usuario o Fabric F64) |
 | **Requisito de ejecución** | Solo editor de código / CLI | Power BI Desktop abierto localmente | Suscripción activa a Fabric |
 
-### Resumen de aplicación
-
-* **Elegir agentes en sistema de archivos (Camino 1)** cuando se busque trabajar de inmediato sin configuración previa, en entornos Linux o CI/CD, generando medidas en lote sobre archivos TMDL.
-* **Elegir MCP (Camino 2)** durante el modelado activo, cuando la validación instantánea del motor, la autocorrección de errores y las tarjetas visuales SVG sean prioritarias.
-* **Elegir Copilot (Camino 3)** cuando la organización cuente con infraestructura en Microsoft Fabric y busque crear páginas de informe completas de forma automatizada sobre el lienzo.
+*En resumen: el Camino 1 destaca en automatización sin configuración previa, el Camino 2 es la opción superior para el modelado activo con validación en vivo, y el Camino 3 genera diseños en el lienzo dentro del ecosistema Microsoft.*
 
 ---
 
@@ -149,11 +145,10 @@ Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta vent
 
 ## Conclusión
 
-La ingeniería de BI profesional con IA exige diferenciar con claridad el formato de archivo y el método de trabajo:
+Para la práctica técnica quedan dos conclusiones fundamentales:
 
-1. **PBIP es la base obligatoria:** Controlar versiones con Git requiere abandonar el formato binario PBIX. La integración con Git es una propiedad del formato de archivo, no de la herramienta de IA.
-2. **MCP supera con claridad al resto en el modelado activo:** Los agentes de archivos carecen de validación de sintaxis y Copilot es una herramienta de conveniencia costosa para visuales genéricos. Para el modelado semántico riguroso, lógica DAX compleja y tarjetas SVG dinámicas, la conexión en vivo con MCP es la vía más productiva.
-3. **El criterio analítico sigue siendo humano:** La IA acelera la generación de código, pero no resuelve la higiene de datos deficiente ni reemplaza el diseño de arquitectura de negocio.
+1. **PBIP es la base obligatoria:** Controlar versiones en Git exige abandonar el formato binario PBIX. El control de versiones es una propiedad del formato de archivo, no de la herramienta de IA.
+2. **MCP domina el desarrollo activo:** Los agentes de archivos carecen de validación de sintaxis y Copilot es una herramienta de conveniencia costosa para visuales genéricos. Para el modelado semántico riguroso, lógica DAX compleja y tarjetas SVG dinámicas, la conexión en vivo mediante MCP es con diferencia la vía más productiva.
 
 ---
 
