@@ -149,3 +149,8 @@ Ninguna herramienta cubre la totalidad del flujo. Cada alternativa presenta vent
 ## Conclusión
 
 Integrar Power BI con IA no consiste en buscar una herramienta mágica que lo haga todo, sino en elegir la vía adecuada para cada necesidad. PBIP aporta la disciplina del desarrollo de software en Git, MCP brinda un asistente interactivo con validación real del motor, y las soluciones en la nube cubren reportes generales. El juicio analítico permanece en manos humanas mientras la velocidad de ejecución se multiplica notablemente.
+
+---
+
+Un agradecimiento especial a **Matías Ciancio** por la visualización de la arquitectura y el intercambio técnico.
+

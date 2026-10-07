@@ -149,3 +149,8 @@ No single tool covers the entire workflow. Each approach has distinct strengths 
 ## Conclusion
 
 Connecting Power BI with AI is not about finding a magic tool that does everything: it is about selecting the right path for the job. File-based PBIP enables disciplined software engineering in Git, live MCP gives developers an interactive co-pilot with real engine validation, and corporate cloud tools serve general reporting needs. The analytical judgment remains in human hands, while the execution speed scales significantly.
+
+---
+
+Special thanks to **Matías Ciancio** for the architecture visualization and technical exchange.
+

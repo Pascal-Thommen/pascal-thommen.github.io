@@ -149,3 +149,8 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 ## Fazit
 
 Power BI mit KI zu steuern bedeutet nicht, ein Alleskönner-Werkzeug zu suchen, sondern den passenden Pfad für das Problem zu wählen. PBIP bringt die Disziplin moderner Softwareentwicklung in Git, MCP gibt Entwicklern einen interaktiven Assistenten mit echter Engine-Validierung, und Cloud-Tools decken Standard-Reporting ab. Das logische Denken bleibt in Menschenhand, während die Umsetzungsgeschwindigkeit massiv steigt.
+
+---
+
+Ein Dank geht an **Matías Ciancio** für die Architektur-Visualisierung und den fachlichen Austausch.
+
