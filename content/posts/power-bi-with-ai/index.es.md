@@ -20,11 +20,9 @@ En la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Univer
 *Participantes y mentores en la 3ra Edición de la Hackathon de Inteligencia de Negocios e IA en la Universidad Americana (3 de octubre de 2026).*
 
 En la práctica existen tres opciones principales:
-* **Nivel de archivos (PBIP):** Editar archivos TMDL integrados con Git mediante agentes de código.
-* **Sesión en vivo (MCP):** Interactuar con la instancia activa de Power BI Desktop a través del servidor MCP de Analysis Services.
-* **Nube (Microsoft Copilot):** Utilizar las capacidades integradas de IA en Microsoft Fabric.
-
-Cada uno de estos caminos resuelve un problema distinto. Ninguno lo abarca todo.
+* **Nivel de archivos (PBIP):** Edición directa de archivos de texto TMDL en el sistema de archivos con agentes de código. Funciona de inmediato sin configuración previa y sin abrir Power BI Desktop.
+* **Sesión en vivo (MCP):** Conexión directa al motor local de Analysis Services en Power BI Desktop para modelado interactivo con verificación de errores en tiempo real y consultas DAX de prueba.
+* **Nube (Microsoft Copilot):** Integración nativa en Microsoft Fabric para la creación automatizada de páginas de informe y elementos visuales directamente en el lienzo dentro del ecosistema Microsoft.
 
 ---
 

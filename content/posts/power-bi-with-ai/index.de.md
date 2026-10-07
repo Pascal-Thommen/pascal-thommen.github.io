@@ -20,11 +20,9 @@ Beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana
 *Teilnehmer und Mentoren beim 3. Hackathon für Business Intelligence und KI an der Universidad Americana (3. Oktober 2026).*
 
 Drei Ansätze stehen in der Praxis zur Auswahl:
-* **Dateiebene (PBIP):** Git-basierte TMDL-Dateien offline mit Coding-Agenten bearbeiten.
-* **Live-Sitzung (MCP):** Über Microsofts Analysis Services MCP Server direkt in die offene Power BI Desktop Instanz eingreifen.
-* **Cloud (Microsoft Copilot):** Fertige KI-Funktionen in Microsoft Fabric nutzen.
-
-Jeder dieser Pfade löst ein anderes Problem. Keiner kann alles.
+* **Dateiebene (PBIP):** Direkte Bearbeitung von TMDL-Textdateien im Dateisystem mit Coding-Agenten. Funktioniert sofort ohne jegliche Einrichtung und ohne laufendes Power BI Desktop.
+* **Live-Sitzung (MCP):** Direkte Verbindung zur lokalen Analysis-Services-Engine in Power BI Desktop für interaktive Modellierung mit Live-Fehlerprüfung und DAX-Testabfragen.
+* **Cloud (Microsoft Copilot):** Nativ in Microsoft Fabric integriert für die automatisierte Erstellung von Berichtsseiten und Visuals direkt auf der Canvas im Microsoft-Ökosystem.
 
 ---
 
@@ -124,7 +122,7 @@ Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich 
 | **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Hoch (Fabric F64 oder User-Lizenz) |
 | **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktives Fabric Cloud-Abonnement |
 
-*Kein Werkzeug deckt alle Ebenen ab: Pfad 1 eignet sich für Headless-Skripte ohne Setup, Pfad 2 für die aktive Entwicklung mit Live-Validierung, und Pfad 3 für standardisierte Canvas-Berichte im Microsoft-Ökosystem.*
+*Zusammenfassend eignet sich Pfad 1 für Headless-Skripte ohne Setup, Pfad 2 für die aktive Entwicklung mit Live-Validierung, und Pfad 3 für standardisierte Canvas-Berichte im Microsoft-Ökosystem.*
 
 ---
 

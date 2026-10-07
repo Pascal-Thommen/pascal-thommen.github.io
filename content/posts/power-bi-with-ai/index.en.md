@@ -19,11 +19,9 @@ At the 3rd Business Intelligence & AI Hackathon at Universidad Americana, one qu
 *Participants and mentors at the 3rd Business Intelligence & AI Hackathon at Universidad Americana (October 3, 2026).*
 
 Three distinct paths exist in practice:
-* **File Level (PBIP):** Editing Git-integrated TMDL files offline with coding agents.
-* **Live Session (MCP):** Driving the active Power BI Desktop instance through Microsoft's Analysis Services MCP server.
-* **Cloud (Microsoft Copilot):** Using built-in AI capabilities within Microsoft Fabric.
-
-Each of these paths solves a different problem. None does it all.
+* **File Level (PBIP):** Direct editing of TMDL text files on disk with coding agents. Works immediately without any setup and without opening Power BI Desktop.
+* **Live Session (MCP):** Direct connection to the local Analysis Services engine in Power BI Desktop for interactive modeling with real-time error checking and DAX test queries.
+* **Cloud (Microsoft Copilot):** Natively integrated within Microsoft Fabric for automated report page layout and canvas visuals inside the Microsoft ecosystem.
 
 ---
 
