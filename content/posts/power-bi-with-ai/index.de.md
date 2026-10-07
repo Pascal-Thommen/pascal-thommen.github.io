@@ -16,13 +16,15 @@ aliases:
 
 Eine der wichtigsten Fragen beim Hackathon war: Wie verbindet man Power BI mit KI? Konkret: Wie steuert und automatisiert man Datenmodelle in Power BI mit KI-Agenten?
 
-![Teilnehmer beim BI Hackathon](hackathon_group.jpg)
+![Teilnehmer und Mentoren beim 3. BI Hackathon der Comunidad Data Platform Paraguay](hackathon_group.jpg)
+*Teilnehmer und Mentoren beim 3. BI Hackathon der Comunidad Data Platform Paraguay (3. Oktober 2026).*
 
-In der Praxis existieren dafür zwei klar getrennte Architekturpfade:
+In der Praxis existieren dafür drei wesentliche Wege:
 1. Dateibasierte Modellierung über das PBIP-Format (offline, voll versionierbar in Git).
 2. Live-Sitzungssteuerung über das Model Context Protocol (MCP).
+3. Cloud-Funktionen über Microsoft Copilot.
 
-Wie beide Pfade funktionieren, an welcher Stelle die Datenbank angebunden wird und wo die realen Grenzen liegen, entscheidet darüber, ob der Einsatz im Geschäftsbetrieb funktioniert.
+Keine dieser drei Optionen kann alles, und sie sind nicht für jede Aufgabe gleich gut geeignet. Wie beide Seiten funktionieren, an welcher Stelle die Datenbank angebunden wird und wo die realen Grenzen liegen, entscheidet darüber, ob der Einsatz im Geschäftsbetrieb funktioniert.
 
 ---
 
@@ -79,6 +81,7 @@ Wenn interaktive Modellierung mit sofortiger Fehlerprüfung gefragt ist, schläg
 Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine eigenständige Executable (`powerbi-modeling-mcp.exe`), die auf den Microsoft Analysis Services Bibliotheken aufsetzt.
 
 ![Power BI Modeling MCP Server in den VS Code Extensions](vscode_mcp_extension.jpg)
+*Die Power BI Modeling MCP Server Extension im Visual Studio Code Marketplace.*
 
 ### Das Setup im Detail
 
@@ -86,6 +89,7 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 2. **KI-Client konfigurieren:** In der `claude_desktop_config.json` (oder jedem anderen MCP-kompatiblen Client) wird der Server mit dem Argument `--start` hinterlegt:
 
 ![Konfiguration in claude_desktop_config.json](claude_desktop_config_json.jpg)
+*Konfigurationsblock in claude_desktop_config.json mit Pfad zur MCP-Executable.*
 
 ```json
 {
@@ -102,24 +106,48 @@ Die Visual Studio Code Extension **Power BI Modeling MCP Server** bündelt eine 
 3. **Verbindung zur Sitzung:** Sobald Power BI Desktop mit einem Modell geöffnet ist, läuft im Hintergrund eine lokale Analysis-Services-Instanz. Ein Prompt an die KI genügt: *"Verbinde dich mit meiner aktiven Power BI Sitzung."*
 
 ![MCP Server aktiv in Claude Desktop](claude_mcp_running.jpg)
+*Der Power BI Modeling MCP Server aktiv verbunden in Claude Desktop.*
 
 Der MCP-Server dockt an den lokalen Port an. Die KI erhält konkrete Werkzeuge: Schema abfragen, Measures anlegen und DAX-Abfragen direkt ausführen. Meldet die Engine einen Syntaxfehler, erhält die KI die Fehlermeldung im selben Schritt und korrigiert den Code selbstständig.
 
 ---
 
-## Was ist mit Microsoft Copilot für Power BI?
+## Pfad 3: Microsoft Copilot für Power BI
 
-Eine häufige Frage lautet: Warum nutzt man nicht einfach den integrierten Microsoft Copilot?
+Microsoft bietet mit Copilot auch eine direkt integrierte KI-Funktion in der Cloud-Oberfläche und im Desktop an.
 
-* **Kosten und Lizenzierung:** Microsoft Copilot erfordert zwingend bezahlte Microsoft Fabric Kapazitäten (mindestens F64 SKU) oder teure Premium-Lizenzen. Das ist für viele Teams und mittelständische Unternehmen eine enorme Hürde.
+* **Kosten und Lizenzierung:** Microsoft Copilot erfordert zwingend bezahlte Microsoft Fabric Kapazitäten (mindestens F64 SKU) oder teure Premium-Lizenzen. Das ist für viele Entwickler und mittelständische Unternehmen eine enorme finanzielle Hürde.
 * **Geschlossenes System:** Copilot agiert als proprietäre Cloud-Blackbox ohne Eingriffsmöglichkeiten in Prompts, Workflows oder externe Werkzeugketten.
-* **Lokale Kontrolle:** Der Ansatz über PBIP und MCP läuft lokal auf dem Rechner mit beliebigen Modellen (Claude, GPT oder lokale Open-Source-Modelle) ohne laufende Fabric-Infrastrukturkosten.
+* **Fokus:** Copilot richtet sich vor allem an Fachanwender für Berichts-Zusammenfassungen und einfache Standard-Diagramme, nicht an die tiefe Datenmodellierung.
+
+---
+
+## Können alle drei Wege alles? Der direkte Fähigkeiten-Vergleich
+
+Kein Werkzeug deckt alle Anforderungen ab. Die drei Ansätze unterscheiden sich in ihren Stärken und Grenzen grundlegend:
+
+| Anforderung / Funktion | Pfad 1: PBIP (Dateiebene) | Pfad 2: MCP Server (Live) | Pfad 3: Microsoft Copilot |
+| :--- | :--- | :--- | :--- |
+| **DAX-Measures erstellen** | Ja (Stapelverarbeitung in TMDL) | Ja (direkt im Modell injiziert) | Ja (über Chat-Prompt) |
+| **Live-Syntaxprüfung** | Nein (blinde Textbearbeitung) | Ja (sofortiges Engine-Feedback) | Eingeschränkt (nur Heuristik) |
+| **DAX-Testabfragen (`execute_dax`)** | Nein (keine laufende Engine) | Ja (direkte Abfrage der Engine) | Nein |
+| **Git-Versionskontrolle & CI/CD** | Exzellent (reine Text-Diffs) | Manuell (Modell muss erst gespeichert werden) | Keine (Cloud-gebunden) |
+| **Visuelles Layout & Diagramme** | Eingeschränkt (blinde JSON-Bearbeitung) | Nein (reiner Modellierungsfokus) | Ja (erstellt Visuals auf der Canvas) |
+| **Individuelle SVG-Karten & HTML** | Eingeschränkt (blinder DAX-Code) | Exzellent (sofortige visuelle Vorschau) | Unbrauchbar (nur Standard-Visuals) |
+| **Kosten & Modell-Freiheit** | Kostenlos (jedes LLM / lokale Modelle) | Kostenlos (jeder MCP-Client) | Sehr teuer (zwingend Fabric F64) |
+| **Laufzeit-Voraussetzung** | Nur Code-Editor / CLI nötig | Power BI Desktop muss lokal laufen | Aktives Fabric Cloud-Abonnement |
+
+### Fazit der Fähigkeiten
+
+* **PBIP wählen**, wenn Versionskontrolle in Git, CI/CD-Pipelines und die massenhafte Measure-Erstellung ohne geöffnetes Power BI Desktop im Vordergrund stehen.
+* **MCP wählen**, wenn man aktiv am Arbeitsplatz modelliert und Live-Validierung, direkte Fehlerkorrektur der Engine sowie anspruchsvolle SVG-Visuals benötigt.
+* **Copilot wählen**, wenn ein hohes Fabric-Budget vorhanden ist und Standard-Berichtsseiten schnell für Fachbereiche generiert werden sollen.
 
 ---
 
 ## Praxisnutzen und Reality Check
 
-### Wo das Setup glänzt
+### Wo das Hackathon-Setup überzeugt hat
 
 * **Dynamische SVG-Measures:** Die Kombination aus dem HTML-Visual in Power BI und DAX-Measures, die dynamischen SVG-Code erzeugen. Individuelle KPI-Karten und Statusanzeigen von Hand in DAX-SVG zu codieren dauert Stunden. Eine KI liefert diese Berechnungen in Sekunden.
 * **Measure-Scaffolding:** Bei einem definierten semantischen Modell erstellt der Agent Dutzende Standard-Measures (Vorjahresvergleiche, Margen, rollierende Durchschnitte) in einem Durchgang.
@@ -133,4 +161,4 @@ Eine häufige Frage lautet: Warum nutzt man nicht einfach den integrierten Micro
 
 ## Fazit
 
-Power BI mit KI zu steuern bedeutet nicht, das analytische Denken abzugeben: Es überführt Power BI in einen modernen, quelltextbasierten Software-Workflow. Ob direkt im TMDL-Quelltext oder live über MCP: Die geschäftliche Logik bleibt in Menschenhand, während die Umsetzungsgeschwindigkeit massiv steigt.
+Power BI mit KI zu steuern bedeutet nicht, ein Alleskönner-Werkzeug zu suchen, sondern den passenden Pfad für das Problem zu wählen. PBIP bringt die Disziplin moderner Softwareentwicklung in Git, MCP gibt Entwicklern einen interaktiven Assistenten mit echter Engine-Validierung, und Cloud-Tools decken Standard-Reporting ab. Das logische Denken bleibt in Menschenhand, während die Umsetzungsgeschwindigkeit massiv steigt.
