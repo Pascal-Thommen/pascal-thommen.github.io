@@ -1,6 +1,6 @@
 ---
 title: "Choosing the Right Database: PostgreSQL as the Architectural Standard"
-date: 2026-10-09T10:00:00Z
+date: 2026-10-08T22:00:00Z
 description: "Why PostgreSQL is the default architecture for modern projects, how it replaces niche databases, and the few scenarios where specialized engines are actually justified."
 summary: "PostgreSQL is the default answer for modern software projects. This guide evaluates functional and operational criteria, highlighting when deviations actually make sense."
 tags: ["Databases", "PostgreSQL", "Software Architecture", "Business Informatics"]

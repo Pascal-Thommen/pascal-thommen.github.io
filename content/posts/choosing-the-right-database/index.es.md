@@ -1,6 +1,6 @@
 ---
 title: "¿Cuál es la base de datos adecuada? PostgreSQL como estándar arquitectónico"
-date: 2026-10-09T10:00:00Z
+date: 2026-10-08T22:00:00Z
 description: "Por qué PostgreSQL es la arquitectura por defecto en proyectos modernos, cómo sustituye a bases de datos de nicho y los pocos escenarios donde los motores especializados realmente se justifican."
 summary: "PostgreSQL es la respuesta estándar para proyectos modernos de software. Esta guía evalúa criterios funcionales y operativos, mostrando cuándo una desviación tiene sentido real."
 tags: ["Bases de Datos", "PostgreSQL", "Arquitectura de Software", "Informática Empresarial"]

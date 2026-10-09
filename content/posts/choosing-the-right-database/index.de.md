@@ -1,6 +1,6 @@
 ---
 title: "Welche Datenbank ist die richtige?"
-date: 2026-10-09T10:00:00Z
+date: 2026-10-08T22:00:00Z
 description: "PostgreSQL als Standardarchitektur, seine Stärken gegen Nischensysteme und die wenigen Szenarien, in denen spezialisierte Datenbanken wirklich berechtigt sind."
 summary: "PostgreSQL ist für moderne Softwareprojekte die Standardantwort. Dieser Leitfaden analysiert funktionale und betriebliche Kriterien und zeigt, wann Abweichungen wirklich Sinn ergeben."
 tags: ["Datenbanken", "PostgreSQL", "Softwarearchitektur", "Wirtschaftsinformatik"]
