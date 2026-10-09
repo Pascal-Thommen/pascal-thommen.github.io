@@ -10,10 +10,11 @@ hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 cover:
-  image: "architecture_diagram.png"
+  image: "cover.png"
   alt: "Architecture Overview: Power BI with AI and MCP"
   caption: "Architecture Overview: File-based modeling via PBIP versus live session via MCP"
   relative: true
+  hiddenInSingle: true
 aliases:
   - "/posts/power-bi-with-ai/"
 ---

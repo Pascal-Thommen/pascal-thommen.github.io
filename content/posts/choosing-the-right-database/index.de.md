@@ -15,6 +15,7 @@ cover:
   alt: "Architektur-Überblick: Der PostgreSQL-Standard und das Datenbank-Ökosystem"
   caption: "Der PostgreSQL-Standard: Single Source of Truth plus spezialisierte Beschleuniger"
   relative: true
+  hiddenInSingle: true
 ---
 
 Welche Datenbank passt zu einem neuen Projekt? In den meisten Fällen PostgreSQL, auch für Dokumente, Geodaten, Volltextsuche und KI-Embeddings. Alles andere braucht eine starke Begründung.

@@ -10,10 +10,11 @@ hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 cover:
-  image: "architecture_diagram.png"
+  image: "cover.png"
   alt: "Architektur-Überblick: Power BI mit KI und MCP"
   caption: "Architektur-Überblick: Dateibasiertes Modellieren via PBIP versus Live-Sitzung via MCP"
   relative: true
+  hiddenInSingle: true
 aliases:
   - "/posts/power-bi-mit-ki/"
   - "/de/posts/power-bi-mit-ki/"
