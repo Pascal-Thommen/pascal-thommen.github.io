@@ -36,9 +36,8 @@ params:
   analytics:
     umami:
       enabled: true
-      websiteId: "REPLACE_WITH_UMAMI_WEBSITE_ID"
+      websiteId: "78851c93-01f7-4d05-8275-1148af7ad9b1"
       scriptURL: "https://cloud.umami.is/script.js"
-      domains: "pascal-thommen.github.io"
 
 languages:
   en:
