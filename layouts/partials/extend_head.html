@@ -1,0 +1,12 @@
+{{- /* Umami Analytics (Cookie-free, GDPR-compliant) */ -}}
+{{- $umami := site.Params.analytics.umami | default site.Params.umami -}}
+{{- with $umami -}}
+  {{- $enabled := ne .enabled false -}}
+  {{- $websiteId := .websiteId | default .website_id -}}
+  {{- $scriptURL := .scriptURL | default .script_url | default "https://cloud.umami.is/script.js" -}}
+  {{- $domains := .domains -}}
+  {{- $hostURL := .hostURL | default .host_url -}}
+  {{- if and $enabled $websiteId -}}
+<script defer src="{{ $scriptURL }}" data-website-id="{{ $websiteId }}"{{ with $domains }} data-domains="{{ . }}"{{ end }}{{ with $hostURL }} data-host-url="{{ . }}"{{ end }}></script>
+  {{- end -}}
+{{- end -}}

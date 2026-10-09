@@ -33,6 +33,12 @@ params:
     - name: "github"
       url: "https://github.com/Pascal-Thommen"
       title: "GitHub"
+  analytics:
+    umami:
+      enabled: true
+      websiteId: "REPLACE_WITH_UMAMI_WEBSITE_ID"
+      scriptURL: "https://cloud.umami.is/script.js"
+      domains: "pascal-thommen.github.io"
 
 languages:
   en:
