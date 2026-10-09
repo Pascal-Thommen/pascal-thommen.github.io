@@ -10,6 +10,11 @@ hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 draft: false
+cover:
+  image: "cover.png"
+  alt: "Resumen de Arquitectura: El estándar de PostgreSQL y el ecosistema de bases de datos"
+  caption: "El estándar de PostgreSQL: única fuente de la verdad más aceleradores especializados"
+  relative: true
 ---
 
 ¿Qué base de datos conviene elegir para un proyecto de software nuevo? En la mayoría de los casos, PostgreSQL: incluyendo documentos, datos geoespaciales, búsqueda de texto completo y embeddings de IA. Cualquier otra opción requiere una justificación sólida.

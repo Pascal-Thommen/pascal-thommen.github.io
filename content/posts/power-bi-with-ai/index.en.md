@@ -9,6 +9,11 @@ author: "Pascal Thommen"
 hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
+cover:
+  image: "architecture_diagram.png"
+  alt: "Architecture Overview: Power BI with AI and MCP"
+  caption: "Architecture Overview: File-based modeling via PBIP versus live session via MCP"
+  relative: true
 aliases:
   - "/posts/power-bi-with-ai/"
 ---

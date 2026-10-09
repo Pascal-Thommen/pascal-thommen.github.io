@@ -9,6 +9,11 @@ author: "Pascal Thommen"
 hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
+cover:
+  image: "architecture_diagram.png"
+  alt: "Resumen de Arquitectura: Power BI con IA y MCP"
+  caption: "Resumen de Arquitectura: Modelado basado en archivos vía PBIP versus sesión en vivo vía MCP"
+  relative: true
 aliases:
   - "/posts/power-bi-con-ia/"
   - "/es/posts/power-bi-con-ia/"

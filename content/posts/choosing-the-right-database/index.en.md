@@ -10,6 +10,11 @@ hidemeta: false
 ShowReadingTime: false
 ShowBreadCrumbs: true
 draft: false
+cover:
+  image: "cover.png"
+  alt: "Architecture Overview: The PostgreSQL Standard and Database Ecosystem"
+  caption: "The PostgreSQL Standard: Single Source of Truth plus specialized accelerators"
+  relative: true
 ---
 
 Which database fits a new software project? In most cases, PostgreSQL: including documents, geospatial data, full-text search, and AI embeddings. Anything else requires strong justification.
