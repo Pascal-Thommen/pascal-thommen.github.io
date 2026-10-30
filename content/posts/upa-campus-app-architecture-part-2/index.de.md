@@ -1,8 +1,8 @@
 ---
 title: "UPA Campus App (Kapitel 2): Server und Docker Infrastruktur"
 date: 2026-10-30T16:15:00Z
-description: "Containerisierung, Port-Isolation und Persistenz: Wie die UPA Campus App PostgreSQL, FastAPI und Nginx mit Docker Compose absichert."
-summary: "Wie funktionieren Containerisierung, Port-Isolation und Datenpersistenz in der Praxis? Kapitel 2 vertieft Dockerfiles, Compose-Orchestrierung und Speicherstrategien."
+description: "Containerisierung, Port-Isolation und Persistenz: Wie die UPA Campus App PostgreSQL, FastAPI und Nginx mit Docker Compose absichert und warum die Container-Trennung eine Kernentscheidung der Spezifikation ist."
+summary: "Wie funktionieren Containerisierung, Healthcheck-Startketten und persistente Volumes in der Praxis? Kapitel 2 vertieft Dockerfiles, Port-Isolation und die architektonische Entkopplung."
 tags: ["Docker", "Softwarearchitektur", "PostgreSQL", "FastAPI", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -17,13 +17,13 @@ series_part_title: "Server und Docker Infrastruktur"
 hiddenInList: true
 ---
 
-Moderne Webanwendungen verlangen reproduzierbare Laufzeitumgebungen, getrennte Ausfallbereiche und verlässliche Datenpersistenz. Die UPA Campus App realisiert diese Anforderungen über drei modular gekoppelte Docker-Container für Datenbank, REST-API und Web-Frontend. Dieser zweite Teil analysiert den Aufbau der Dockerfiles, die deklarative Orchestrierung via Docker Compose, Mechanismen der Port-Isolation sowie die persistente Datenspeicherung.
+Moderne Webanwendungen verlangen reproduzierbare Laufzeitumgebungen, klar getrennte Ausfallbereiche und verlässliche Datenpersistenz, weil ein einzelner Softwarefehler im Frontend niemals die Datenbank oder die API-Schnittstelle mitreißen darf. Die UPA Campus App setzt diese Anforderung durch drei modular entkoppelte Docker-Container für Datenbank, REST-API und Web-Frontend um. Dieses zweite Kapitel analysiert das Funktionsprinzip von Linux-Containern, den Aufbau der Dockerfiles, die koordinierte Startkette via Docker Compose sowie die Trennung von flüchtigem Anwendungscode und dauerhaftem Speicher.
 
 ---
 
 ## Containerisierung gegenüber virtuellen Maschinen
 
-Warum setzt die UPA Campus App auf Docker statt auf klassische virtuelle Maschinen? Der Unterschied liegt in der Virtualisierungsebene und dem Ressourcenverbrauch:
+Warum setzt die UPA Campus App auf Docker statt auf klassische virtuelle Maschinen (VMs) oder eine direkte Installation auf dem Server-Betriebssystem? Der entscheidende Unterschied liegt in der Virtualisierungsebene und dem Ressourcenverbrauch:
 
 ```mermaid
 flowchart TD
@@ -45,43 +45,45 @@ flowchart TD
     end
 ```
 
-Klassische virtuelle Maschinen (VMs) virtualisieren die gesamte Computer-Hardware. Jede VM benötigt ein vollwertiges Gast-Betriebssystem mit eigenem Kernel, Speicher-Management und Systemdiensten. Das bindet pro Instanz mehrere Gigabyte Arbeitsspeicher und führt zu Bootzeiten im Minutenbereich.
+Klassische virtuelle Maschinen emulieren die gesamte Computer-Hardware. Jede VM benötigt ein eigenes Gast-Betriebssystem mit eigenem Kernel und Hintergrunddiensten, was pro Instanz mehrere Gigabyte Arbeitsspeicher bindet und den Start auf Minuten verzögert.
 
-Docker-Container teilen sich dagegen den Linux-Kernel des Host-Systems. Zur Kapselung nutzt Docker zwei Kernfunktionen des Linux-Kernels:
-* **Namespaces:** Isolieren die Prozessbäume (PID), Netzwerk-Interfaces (NET), Benutzer-IDs (USER) und Dateisystem-Mounts (MNT). Ein Container sieht nur seine eigenen Prozesse und kann andere Container nicht einsehen.
-* **Control Groups (cgroups):** Begrenzen und überwachen Hardwareressourcen wie Arbeitsspeicher, CPU-Zyklen und Festplatten-Durchsatz. Ein einzelner speicherintensiver Prozess kann somit nicht den gesamten Host-Server lahmlegen.
+Docker-Container teilen sich dagegen den Linux-Kernel des Host-Servers und nutzen zwei native Kernel-Mechanismen zur Isolation:
+* **Namespaces:** Trennen Prozessbäume (`PID`), Netzwerkschnittstellen (`NET`), Benutzerkennungen (`USER`) und Dateisystem-Einhängepunkte (`MNT`). Jeder Container sieht ausschließlich seine eigenen Prozesse.
+* **Control Groups (cgroups):** Begrenzen und überwachen den Verbrauch von Arbeitsspeicher, CPU-Zeit und Festplatten-I/O, sodass ein einzelner Dienst niemals den gesamten Host-Server blockieren kann.
 
-Dank dieser Konstruktion starten Container in Sekundenbruchteilen und verbrauchen nur die Ressourcen, die der Anwendungsprozess tatsächlich beansprucht.
-
-Gleichzeitig löst Docker das klassische Problem abweichender Entwickler-Rechner ("Works on my machine"). Ob macOS, Linux oder Windows mit WSL2: Der Container kapselt Python-Laufzeit, Systempakete, Nginx-Konfiguration und Datenbankschema bitgenau ein. Die Laufzeitumgebung auf dem lokalen Arbeitsplatz gleicht dem Produktionsserver zu 100 Prozent.
+Für ein universitäres Projektteam löst Docker zudem das klassische Problem abweichender Entwickler-Rechner ("Works on my machine"): Egal ob ein Teammitglied unter Windows mit WSL2, macOS oder Linux entwickelt, kapselt das Container-Image die exakte Python-Version, die C-Bibliotheken für den Datenbanktreiber und die Nginx-Konfiguration bitgenau ein.
 
 ---
 
-## Die drei Container der UPA Campus App
+## Warum Frontend und Backend in getrennten Containern laufen
 
-Die Campus-Infrastruktur gliedert sich in drei spezialisierte Container, die über ein gemeinsames Docker-Netzwerk kommunizieren.
+In der Architekturspezifikation der UPA Campus App (Entscheidung 3.3: *Desacoplamiento de Contenedores Frontend y Backend*) wurde bewusst festgelegt, das Web-Portal und die FastAPI-Schicht nicht in einen gemeinsamen Container zu packen:
 
 ```mermaid
 flowchart LR
-    Browser["Client Browser"] -->|Port 8085| Nginx["Frontend Container: Nginx / PWA"]
-    Nginx -->|Reverse Proxy /api/ Port 8000| FastAPI["Backend Container: FastAPI"]
+    Browser["Client Browser / App"] -->|127.0.0.1:8085| Nginx["Frontend Container: Nginx (Statische UI & Proxy)"]
+    Nginx -->|Reverse Proxy /api/ Port 8000| FastAPI["Backend Container: FastAPI (Geschäftslogik)"]
     FastAPI -->|SQL Port 5432| Postgres[("Datenbank Container: PostgreSQL")]
-    Postgres -->|ACID Speicherung| VolPG[("Host Volume: postgres_data")]
-    FastAPI -->|Bilder & Dokumente| VolUpload[("Host Volume: uploads_data")]
+    Postgres -->|ACID Tabellen| VolPG[("Host Volume: postgres_data")]
+    FastAPI -->|Bilder, Videos & PDFs| VolUpload[("Host Volume: uploads_data")]
 ```
+
+Diese strikte Trennung bringt im laufenden Campus-Betrieb drei handfeste Vorteile:
+1. **Unabhängige Deployments ohne API-Unterbrechung:** Wenn das Marketing-Team eine rein optische Anpassung am Redaktions-Cockpit (`web-admin`) oder an der QR-Landingpage wünscht, wird lediglich der leichtgewichtige Nginx-Container neu gebaut und in einer Sekunde ausgetauscht. Der FastAPI-Container und die aktiven Datenbankverbindungen der Android-App laufen ohne jede Unterbrechung weiter.
+2. **Isolierte Angriffs- und Ausfalldomänen:** Der Nginx-Container enthält keinerlei Python-Interpreter, keine Datenbank-Zugangsdaten und keine Google-Service-Account-Schlüssel. Selbst eine theoretische Schwachstelle in der Auslieferung statischer Assets gewährt keinen Zugriff auf den API-Kern.
+3. **Zero-Mock-Entwicklung für das Android-Team:** Weil das Backend samt automatischer Datenbank-Migration und repräsentativen Seed-Daten in einem eigenen Container gekapselt ist, können die Mobile-Entwickler mit einem einzigen Befehl (`docker compose up -d`) lokal einen vollwertigen API-Server starten und direkt gegen echte Endpunkte statt gegen künstliche Attrappen programmieren.
+
+---
+
+## Der Aufbau der drei Container im Detail
 
 ### 1. Datenbank: Offizielles PostgreSQL Image
 
-Für die relationale Datenhaltung dient das offizielle Image `postgres:16-alpine`. Die Wahl eines offiziellen Images bietet klare Vorzüge:
-* Keine eigene Wartung von Datenbank-Kompilaten oder Sicherheits-Patches.
-* Alpine Linux als schlanke Basis hält die Image-Größe bei unter 100 MB.
-* Die Konfiguration erfolgt vollständig über standardisierte Umgebungsvariablen (`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`).
-
-Eigene Dockerfiles für relationale Standarddatenbanken sind in aller Regel ein Anti-Pattern, da sie unnötigen Wartungsaufwand erzeugen.
+Für die relationale Datenhaltung kommt das offizielle Image `postgres:16-alpine` zum Einsatz. Ein eigenes Dockerfile für eine Standard-Datenbank wäre ein unnötiges Wartungsrisiko. Das Alpine-Image bleibt unter 100 MB, bringt alle Sicherheits-Patches der PostgreSQL-Community mit und wird vollständig über Umgebungsvariablen (`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`) initialisiert.
 
 ### 2. Backend: Eigenes Dockerfile mit Python und FastAPI
 
-Das Backend verarbeitet REST-Anfragen und setzt Geschäftslogik durch. Die Basis bildet `python:3.12-slim`:
+Das Backend verarbeitet sämtliche REST-Anfragen und Hintergrundaufgaben. Die Basis bildet `python:3.12-slim`:
 
 ```dockerfile
 FROM python:3.12-slim
@@ -118,14 +120,14 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-Wichtige Architektur-Entscheidungen im Backend-Dockerfile:
-* **Effizientes Layer-Caching:** Das Kopieren und Installieren der `requirements.txt` erfolgt vor dem eigentlichen Anwendungscode. Solange sich externe Bibliotheken nicht ändern, überspringt Docker bei Code-Updates die zeitaufwendige Paketinstallation.
-* **Privilegien-Minimierung:** Der Prozess läuft unter dem unprivilegierten Benutzer `appuser` statt als `root`. Selbst bei einer Sicherheitslücke in einer Drittbibliothek besitzt der Angreifer keine administrativen Rechte auf dem Container-System.
-* **Integrierter Healthcheck:** Docker prüft alle 15 Sekunden über den `/health`-Endpunkt, ob die FastAPI-Instanz Anfragen verarbeitet. Scheitert die Prüfung dreimal hintereinander, markiert Docker den Container als `unhealthy`.
+Drei Details in diesem Dockerfile sind für den stabilen Produktionsbetrieb entscheidend:
+* **Schichten-Caching (Layer Caching):** Docker speichert jede Anweisung als eigene Schicht. Weil `COPY requirements.txt .` und `pip install` vor `COPY src/ ./src` stehen, muss Docker die Python-Pakete bei normalen Code-Änderungen nicht neu herunterladen. Ein Build dauert dadurch Sekunden statt Minuten.
+* **Prinzip minimaler Rechte (`USER appuser`):** Standardmäßig laufen Prozesse in Docker als `root`. Durch den Wechsel auf den Systembenutzer `appuser` besitzt der Python-Prozess selbst im Falle eines Exploits keine Administratorrechte im Container.
+* **Aktive Selbstüberwachung (`HEALTHCHECK`):** Alle 15 Sekunden ruft Docker intern den Endpunkt `/health` auf. Antwortet FastAPI dreimal in Folge nicht mit HTTP 200, markiert Docker den Container sofort als `unhealthy`.
 
 ### 3. Frontend: Eigenes Dockerfile mit Nginx
 
-Das Frontend liefert die Web-Admin-Oberfläche als Progressive Web App (PWA) aus und übernimmt das Request-Routing:
+Der Frontend-Container bündelt die statischen Oberflächen (Web-Admin-Cockpit und Campus-PWA) sowie die Routing-Regeln:
 
 ```dockerfile
 FROM nginx:alpine
@@ -143,13 +145,11 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=3s --retries=3 \
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-Nginx erfüllt hier eine Doppelfunktion:
-* **Auslieferung statischer Dateien:** HTML, CSS, JavaScript und PWA-Manifeste werden komprimiert mit Gzip ausgeliefert.
-* **Reverse Proxy:** Anfragen an `/api/` leitet Nginx transparent an den FastAPI-Container weiter. Der Web-Browser kommuniziert ausschließlich mit dem Frontend-Port, wodurch Cross-Origin Resource Sharing (CORS) Konflikte im Produktivbetrieb vermieden werden.
+### 4. Startkoordination mit Docker Compose
 
-### 4. Orchestrierung mit Docker Compose
+Was passiert, wenn nach einem Stromausfall alle drei Container gleichzeitig starten? PostgreSQL benötigt einige Sekunden, um seine Transaktionsprotokolle zu prüfen, während Python fast verzögerungsfrei hochfährt. Ohne Koordination würde das Backend sofort versuchen, die Datenbank zu erreichen, mit einem Verbindungsfehler abstürzen und einen Crash-Loop auslösen.
 
-Docker Compose definiert das Gesamtsystem deklarativ in einer zentralen Konfigurationsdatei:
+Docker Compose verhindert dieses Wettrennen über eine explizite Gesundheitsprüfung (`condition: service_healthy`):
 
 ```yaml
 services:
@@ -187,7 +187,9 @@ services:
       - campus-network
 
   frontend:
-    build: ./web-admin
+    build:
+      context: .
+      dockerfile: web-admin/Dockerfile
     container_name: campus-frontend
     restart: unless-stopped
     depends_on:
@@ -196,29 +198,20 @@ services:
       - "127.0.0.1:8085:80"
     networks:
       - campus-network
-
-networks:
-  campus-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  uploads_data:
 ```
 
-Ein entscheidendes Detail ist die Startkoordination:
-`depends_on` mit `condition: service_healthy` stellt sicher, dass das Backend erst dann hochfährt, wenn der PostgreSQL-Dienst über `pg_isready` verifiziert bereit ist. Ohne diesen Healthcheck würde die FastAPI-Instanz beim Booten vergeblich versuchen, Datenbank-Migrationen auszuführen, und im Crash-Loop landen.
+Erst wenn das Hilfsprogramm `pg_isready` bestätigt, dass PostgreSQL SQL-Verbindungen annimmt, startet Docker den Backend-Container.
 
 ---
 
-## Sicherheit und Ports: Isolation statt offener Schnittstellen
+## Sicherheit durch Port-Isolation
 
-Ein verbreiteter Fehler im Container-Betrieb ist das wahllose Veröffentlichen interner Ports auf dem Host-System.
+Ein häufiger Fehler bei Einsteigern ist es, für jeden Container eine `ports`-Freigabe in die Compose-Datei zu schreiben (z.B. `5432:5432` für die Datenbank).
 
 ```mermaid
 flowchart LR
-    subgraph PublicInternet["Öffentliches Netz"]
-        Attacker["Angreifer / Scanner"]
+    subgraph PublicInternet["Öffentliches Internet"]
+        Attacker["Automatisierte Port-Scanner"]
     end
     subgraph HostServer["Host Server"]
         NetBird["NetBird Tunnel Interface"]
@@ -228,73 +221,48 @@ flowchart LR
             DB[("PostgreSQL (Port 5432)")]
         end
     end
-    Attacker -.->|Blockiert: Keine offenen Ports| HostServer
-    NetBird -->|Zugriff nur via Tunnel| Frontend
-    Frontend -->|Interner Proxy| Backend
-    Backend -->|Interne SQL Abfrage| DB
+    Attacker -.->|Blockiert: 0 offene öffentliche Ports| HostServer
+    NetBird -->|Zugriff an 127.0.0.1:8085| Frontend
+    Frontend -->|Internes DNS: backend:8000| Backend
+    Backend -->|Internes DNS: postgres:5432| DB
 ```
 
-In der UPA Campus Architektur gelten zwei strikte Sicherheitsregeln:
-
-### 1. Interne Ports bleiben im Bridge-Netzwerk
-
-Weder der Datenbank-Port 5432 noch der Backend-Port 8000 tauchen im Compose-Abschnitt `ports` auf. Sie sind ausschließlich innerhalb des virtuellen Docker-Netzwerks `campus-network` erreichbar. Die Kommunikation erfolgt über die internen DNS-Namen `postgres:5432` und `backend:8000`. Vom Host-Betriebssystem oder externen Netzwerken aus existieren diese Ports schlichtweg nicht.
-
-### 2. Strikte Bindung an Localhost
-
-Das Frontend exponiert Port 80 nicht mit der Standard-Syntax `8085:80`, sondern bindet ihn explizit an `127.0.0.1:8085:80`. 
-
-Der Hintergrund: Standardmäßig bindet Docker Ports an alle Schnittstellen (`0.0.0.0`). Auf Linux-Servern manipuliert der Docker-Daemon eigenständig die Firewall-Tabellen (`iptables`). Dies führt dazu, dass Container-Ports oft an der lokalen Host-Firewall (wie UFW) vorbei direkt ins offene Internet geroutet werden.
-
-Durch die Bindung an `127.0.0.1` lauscht der Port ausschließlich auf dem lokalen Loopback-Interface. Der Zugriff von außen erfolgt über den verschlüsselten NetBird-Mesh-Tunnel (WireGuard). Der Server besitzt damit im öffentlichen Internet null geöffnete Eingangs-Ports.
+Die UPA Campus App setzt im Produktivbetrieb zwei Schutzmechanismen durch:
+1. **Kein Host-Binding für Datenbank und API:** Weder Port 5432 noch Port 8000 werden im Produktivbetrieb nach außen gebunden. Die Container erreichen sich über den internen Docker-DNS-Server anhand ihres Servicenamens (`postgres:5432` und `backend:8000`). Für jedes Gerät außerhalb des Docker-Bridge-Netzwerks sind diese Ports unsichtbar.
+2. **Strikte Loopback-Bindung (`127.0.0.1:8085:80`):** Würde man den Frontend-Port als `8085:80` notieren, bände Docker ihn standardmäßig an alle Netzwerkschnittstellen (`0.0.0.0`) und würde dabei auf Linux-Servern automatisch die Regeln der lokalen Firewall (wie UFW) in den `iptables` überschreiben. Durch das vorangestellte `127.0.0.1:` lauscht Nginx ausschließlich auf der lokalen Loopback-Schnittstelle des Servers, wo der lokale NetBird-Tunnel den Verkehr sicher abholt.
 
 ---
 
-## Persistenz und Volumes: Flüchtige Container vs. beständiger Speicher
+## Flüchtige Container vs. beständige Volumes
 
-Container sind nach dem Design-Prinzip der 12-Factor-App konzipiert: Sie sind zustandslos und jederzeit ersetzbar.
+Warum gehen Daten in einem normalen Container verloren, sobald man ein Update einspielt?
 
 ```mermaid
 flowchart TD
     subgraph ContainerLifecycle["Container-Schicht (Flüchtig)"]
-        AppCode["Anwendungscode & Bibliotheken"]
-        TempFS["Temporäre Schreibschicht (UnionFS)"]
-        KillAction["Container Neustart / Image Update"]
-        TempFS -.->|Gelöscht beim Neuaufbau| KillAction
+        AppCode["Unveränderbares Image (Code & Bibliotheken)"]
+        TempFS["Beschreibbare Container-Schicht (OverlayFS)"]
+        KillAction["Container-Update (docker compose up -d --build)"]
+        TempFS -.->|Wird beim Update restlos gelöscht| KillAction
     end
-    subgraph HostStorage["Host-System (Dauerhaft)"]
+    subgraph HostStorage["Host-Dateisystem (Dauerhaft)"]
         PGVolume[("Docker Volume: postgres_data")]
         UploadVolume[("Docker Volume: uploads_data")]
     end
-    ContainerLifecycle -->|Gemountet in /var/lib/postgresql/data| PGVolume
-    ContainerLifecycle -->|Gemountet in /app/uploads| UploadVolume
+    ContainerLifecycle -->|Eingehängt unter /var/lib/postgresql/data| PGVolume
+    ContainerLifecycle -->|Eingehängt unter /app/uploads| UploadVolume
 ```
 
-### Das flüchtige Container-Dateisystem
+Jeder Container besteht aus schreibgeschützten Image-Schichten und einer dünnen, beschreibbaren Ober-Schicht (`OverlayFS`). Spielt man ein Software-Update über `docker compose up -d --build` ein, wirft Docker den alten Container samt seiner beschreibbaren Schicht weg und startet einen frischen Container aus dem neuen Image.
 
-Jeder Docker-Container besitzt eine beschreibbare Speicherschicht (OverlayFS / UnionFS). Dateien, die während der Laufzeit im Dateisystem des Containers erzeugt werden, existieren nur in dieser dünnen Schicht.
-
-Wird ein Container über `docker compose down` gestoppt oder durch eine neu gebaute Image-Version ersetzt, wird die beschreibbare Schicht mitsamt ihrem Inhalt unwiderruflich gelöscht. Würde PostgreSQL seine Datenbanktabellen im regulären Container-Dateisystem ablegen, wäre nach jedem Software-Update der gesamte Datenbestand verloren.
-
-### Benannte Docker Volumes für Datenpersistenz
-
-Docker Volumes lösen dieses Problem, indem sie Verzeichnisse des Host-Betriebssystems direkt in den Container einbinden:
-* **Trennung von Code und Daten:** Der Container enthält nur Code und Laufzeitumgebung, während alle veränderlichen Daten auf dem Host-Dateisystem (`/var/lib/docker/volumes/`) liegen.
-* **Lebenszyklus-Unabhängigkeit:** Das Volume `postgres_data` existiert unabhängig vom Lebenszyklus des Datenbank-Containers. Ein Befehl wie `docker compose up -d --build` vernichtet den alten Container und startet einen neuen, der das bestehende Volume nahtlos wieder an `/var/lib/postgresql/data` bindet.
-* **Performance:** Host-Volumes umgehen den Copy-on-Write-Overhead des Container-Dateisystems und erreichen die native I/O-Leistung des Host-Speichermediums.
-
-### Zweiteilung: Relationale Tabellen und Mediendaten
-
-In der Campus-Architektur arbeiten zwei separate Volumes:
-1. `postgres_data`: Sichert binäre Datenbank-Dateien, Transaktions-Logs und Indizes.
-2. `uploads_data`: Speichert vom Backend empfangene Mediendateien wie PDF-Dokumente oder Ankündigungs-Bilder.
-
-Diese Trennung verhindert, dass große Binärdateien als BLOBs in der Datenbank landen, und hält relationale Datenbank-Backups schlank und schnell.
+Damit dabei weder die registrierten Studierenden noch die hochgeladenen Veranstaltungs-Videos verschwinden, lagert Docker Compose beide Verzeichnisse in benannte **Docker Volumes** auf dem Host-Dateisystem (`/var/lib/docker/volumes/`) aus:
+* **`postgres_data`:** Überlebt jeden Container-Austausch und bewahrt sämtliche Datenbanktabellen, Indizes und Write-Ahead-Logs.
+* **`uploads_data`:** Bewahrt alle über den einheitlichen Medien-Upload eingereichten Bilder (`JPG`, `PNG`, `WEBP`), Videos (`MP4`, `WEBM`) und Dokumente (`PDF`).
 
 ---
 
 ## Fazit
 
-1. **Garantierte Reproduzierbarkeit:** Minimalistische Base-Images, Multi-Stage-Überlegungen und unprivilegierte Benutzer eliminieren Konfigurationsdrifts zwischen Entwicklung und Serverbetrieb.
-2. **Defensive Netzwerkarchitektur:** Interne Dienste verbleiben im Docker-Bridge-Netzwerk, während die Bindung an `127.0.0.1` in Kombination mit Mesh-Tunneln jeden direkten Angriff aus dem Internet abwehrt.
-3. **Konsequente Datentrennung:** Zustandsloser Anwendungscode in flüchtigen Containern ermöglicht risikofreie Software-Updates, während benannte Volumes relationale Daten und Medienbestände dauerhaft schützen.
+1. **Entkopplung schafft Betriebssicherheit:** Die Trennung von Nginx, FastAPI und PostgreSQL in eigene Container erlaubt unabhängige UI-Updates und schützt den API-Kern vor Fehlern in der Präsentationsschicht.
+2. **Deterministische Startkette:** Durch `pg_isready` und Healthchecks wartet das Backend beim Systemstart kontrolliert auf die Datenbank, statt in unkontrollierte Neustart-Schleifen zu geraten.
+3. **Geschlossene Ports und langlebige Volumes:** Interne Dienste sprechen nur über das private Docker-Bridge-Netzwerk miteinander, während benannte Volumes dafür sorgen, dass Updates jederzeit ohne Datenverlust möglich sind.

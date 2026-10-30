@@ -1,8 +1,8 @@
 ---
 title: "UPA Campus App (Chapter 5): Backend and Interfaces"
 date: 2026-10-30T16:45:00Z
-description: "Backend architecture in detail: How the UPA Campus App leverages FastAPI for asynchronous REST APIs, Pydantic for strict input validation, and a clean layered architecture."
-summary: "The core application engine: Chapter 5 examines REST principles, asynchronous processing with FastAPI, schema validation via Pydantic, and a modular three-tier layered architecture."
+description: "Backend Architecture and API Contracts: How the UPA Campus App uses FastAPI and Pydantic to enforce functional specification rules at the system boundary and integrate Google Workspace and Instagram."
+summary: "Why must validation never rely on the frontend alone? Chapter 5 shows how FastAPI, Pydantic, and the service layer enforce every specification rule as an executable interface contract."
 tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Software Architecture", "Enterprise Systems"]
 categories: ["Architecture", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -17,262 +17,152 @@ series_part_title: "Backend and Interfaces"
 hiddenInList: true
 ---
 
-Enterprise applications rely on a deterministic backend to guard domain state, enforce business constraints, and expose reliable interfaces to client applications. The UPA Campus App builds this foundation on Python with FastAPI and Pydantic. Following the client delivery analysis in Part 4, this fifth installment focuses on the core backend architecture: REST interface design, asynchronous execution with FastAPI, schema-driven payload validation via Pydantic, and a clean layered architecture separating concerns across the stack.
+A foundational rule of system architecture is simple: never trust the client. Any check performed inside a browser (such as a disabled text input or a required checkbox in HTML) can be bypassed in seconds using browser developer tools or a direct `curl` command. Only the backend constitutes a trustworthy security and domain boundary. The UPA Campus App builds this core on Python with FastAPI and Pydantic. This fifth chapter shows business informatics students and vibe-coders how to translate a functional specification into binding API contracts, strict input validation, and a clean three-tier service architecture.
 
 ---
 
-## What is a REST API: Resource Modeling and Protocol Semantics
+## Why API-First and FastAPI Form the Core
 
-Representational State Transfer (REST) provides an established architectural framework for distributed systems over HTTP. At its center lies the stateless request-response model: Every HTTP request from a client carries all necessary context, including authentication tokens in headers and structured payloads in the body. The server retains no ephemeral client session state in memory, enabling horizontal scalability and edge caching.
+In a multi-platform engineering project, the web team and the native Android team (Kotlin) build against the same server simultaneously. Without an explicit interface contract, teams quickly collide over field names, timestamp formats, or error codes.
+
+Section 1 of the UPA Campus App functional specification justifies Python and FastAPI on three concrete engineering grounds:
+1. **60 Percent Less Boilerplate Code:** Compared to verbose traditional Java enterprise stacks, FastAPI eliminates repetitive ceremony so the team can focus directly on campus domain logic and timely MVP delivery.
+2. **Automated Interface Contracts via OpenAPI (`/docs`):** FastAPI inspects Python type annotations and automatically generates an interactive Swagger UI at `/docs`. Android engineers inspect live endpoints, required fields, and HTTP status codes directly without waiting for manually updated specification documents.
+3. **Asynchronous Concurrency (`ASGI`):** When dozens of students open their Agenda simultaneously and the backend fetches live assignment deadlines from the Google Classroom API, waiting on external network I/O never blocks a server thread. The asynchronous event loop immediately processes other incoming requests in the meantime.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Client (Web / Mobile)
-    participant API as FastAPI Backend
+    actor Client as Client (Android / Web-Admin)
+    participant API as FastAPI Router & Pydantic
+    participant Service as Service Layer (Business Logic)
     participant DB as PostgreSQL
 
-    Client->>API: HTTP POST /api/v1/publications (Bearer Token + JSON Payload)
-    Note over API: 1. Validate Token (401/403)<br/>2. Pydantic Validation (422)<br/>3. Execute Business Logic
-    API->>DB: INSERT INTO publications (...)
-    DB-->>API: New Record with ID and Timestamps
-    API-->>Client: 201 Created (JSON Response Schema)
+    Client->>API: HTTP POST /api/publications (Bearer JWT + JSON Payload)
+    Note over API: 1. Verify JWT & domain (@example-campus.edu) (401/403)<br/>2. Validate Pydantic schema & mandatory expiration (422)
+    API->>Service: Pass validated DTO
+    Note over Service: 3. Enforce domain rules (e.g. Instagram Read-Only lock)
+    Service->>DB: Transactional write to posts table
+    DB-->>Service: Persisted record
+    Service-->>API: Domain entity
+    API-->>Client: 201 Created (Sanitized response schema)
 ```
-
-### 1. Resource Orientation and Standard HTTP Verbs
-
-REST organizes interfaces around distinct business entities (such as `/api/v1/publications` or `/api/v1/courses`). Client interactions rely on standardized HTTP verbs:
-
-* **GET:** Retrieves resource representations. The operation is idempotent and safe without mutations (e.g., `GET /api/v1/publications`).
-* **POST:** Creates a new entity within the targeted resource collection (e.g., `POST /api/v1/publications`).
-* **PUT / PATCH:** Modifies resource state. `PUT` replaces the resource representation completely, whereas `PATCH` applies partial delta updates.
-* **DELETE:** Removes a resource idempotently from persistent storage (e.g., `DELETE /api/v1/publications/42`).
-
-### 2. Semantic HTTP Status Codes
-
-A robust REST API signals execution outcomes through standard HTTP status codes rather than masked HTTP 200 bodies with proprietary error envelopes:
-
-* **200 OK:** Successful request with an expected response body (e.g., GET or PATCH operations).
-* **201 Created:** Successful creation of a new entity (standard for POST operations).
-* **400 Bad Request:** Malformed request syntax that cannot be processed by the parser.
-* **401 Unauthorized:** Missing, expired, or invalid authentication credentials (e.g., an invalid JWT token).
-* **403 Forbidden:** Authenticated identity lacks permission to access the designated resource.
-* **404 Not Found:** Target resource does not exist in the datastore.
-* **422 Unprocessable Entity:** Syntactically valid JSON payload that violates domain constraints or schema types.
-* **500 Internal Server Error:** Unhandled server exception during runtime execution.
 
 ---
 
-## FastAPI as Framework: Performance and Contract Generation
+## Pydantic as Gatekeeper: The Specification as an Executable Schema
 
-Traditional Python web frameworks like Django or Flask were conceived around the synchronous WSGI (Web Server Gateway Interface) standard. Under WSGI, each incoming request consumes an operating system thread while waiting on database queries or external network calls.
-
-FastAPI builds upon modern Python type annotations (PEP 484) and the asynchronous ASGI (Asynchronous Server Gateway Interface) standard powered by Starlette and Uvicorn:
-
-```mermaid
-flowchart LR
-    subgraph AsyncModel["Asynchronous ASGI Model (FastAPI)"]
-        Req1["Request A (I/O Wait)"] --> Loop["Event Loop"]
-        Req2["Request B (Compute)"] --> Loop
-        Req3["Request C (I/O Wait)"] --> Loop
-        Loop --> Worker["Single Worker Thread serves hundreds of concurrent connections"]
-    end
-```
-
-Key architectural factors driving this choice for the UPA Campus App:
-
-1. **High Concurrency via async/await:** I/O-bound operations (such as PostgreSQL queries via SQLAlchemy or upstream campus catalog calls) yield execution to the event loop. The worker handles other incoming traffic while waiting on socket responses.
-2. **Native OpenAPI and Swagger Specifications:** FastAPI produces compliant OpenAPI 3 documentation directly from Python type declarations. Interactive documentation is available out of the box at `/docs` (Swagger UI) and `/redoc` (ReDoc). Frontend engineers and third-party integrations obtain machine-readable contracts without documentation drift.
-3. **Dependency Injection Architecture:** FastAPI provides a composable dependency injection framework through `Depends()`. Database sessions, security contexts, and repository instances resolve cleanly inside endpoint handlers, simplifying unit testing and mocking.
-
----
-
-## Pydantic Schemas and Perimeter Validation
-
-Data integrity and security must be enforced at the API perimeter. Malformed, incomplete, or hostile inputs should never reach the service or database layers. Pydantic serves as an automated gatekeeper.
+How do you guarantee at the architectural level that a pinned emergency banner is never saved without an expiration timestamp, even if someone bypasses the web form? The answer is **Pydantic**: every incoming JSON payload must pass through a declarative schema gate before a single line of business logic executes.
 
 ```mermaid
 flowchart TD
-    ClientReq["Client HTTP Request (JSON Body)"] --> Parser["Pydantic Schemas (Perimeter Validation)"]
-    Parser -->|Type Error / Constraint Violation| ErrResp["HTTP 422 Unprocessable Entity (Structured Details)"]
-    Parser -->|Valid Payload| Domain["Service & Domain Logic"]
-    Domain --> DB["Database (PostgreSQL)"]
-    DB --> OutSchema["Pydantic Response Schema (Output Sanitization)"]
-    OutSchema --> ClientResp["HTTP 200/201 (Sanitized Output)"]
+    ClientReq["HTTP Request (Raw JSON)"] --> Parser["Pydantic Schema Validation"]
+    Parser -->|Rule violated: e.g. is_pinned without expires_at| ErrResp["HTTP 422 Unprocessable Entity (Detailed Error Report)"]
+    Parser -->|Valid & Type-Safe Data| Domain["Service Layer (Domain Logic)"]
+    Domain --> DB["PostgreSQL Persistence"]
 ```
 
-### Decoupling Input and Output Schemas
-
-The UPA Campus App maintains explicit schema models for creation, updates, and serialized responses:
+The following schema from the UPA Campus App demonstrates how the requirements of the unified publication model (`/api/publications`) translate directly into executable validation logic:
 
 ```python
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime, timezone
+from typing import Literal
+from pydantic import BaseModel, Field, model_validator
 
-class PublicationBase(BaseModel):
-    title: str = Field(..., min_length=3, max_length=150, description="Title of publication")
-    content: str = Field(..., min_length=10, max_length=5000, description="Body content")
-    category: str = Field(default="general", max_length=50)
+class PublicationCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=200)
+    content: str = Field(..., min_length=1, max_length=10000)
+    post_type: Literal["MANUAL", "EVENT", "EMERGENCY_BANNER", "INSTAGRAM"] = "MANUAL"
+    media_type: Literal["NONE", "IMAGE", "VIDEO", "DOCUMENT"] = "NONE"
+    media_url: str | None = None
+    is_event: bool = False
+    event_date: datetime | None = None
+    is_pinned: bool = False
+    expires_at: datetime | None = None
+    reminder_value: int | None = Field(default=None, ge=1, le=365)
+    reminder_unit: Literal["MINUTES", "HOURS", "DAYS"] | None = None
+    target_groups: list[str] = Field(default_factory=list)
 
-class PublicationCreate(PublicationBase):
-    """Schema for incoming creation requests."""
-    pass
+    @model_validator(mode="after")
+    def enforce_specification_rules(self) -> "PublicationCreate":
+        # Specification Rule 1: Pinned posts (is_pinned) require a future expiration date
+        if self.is_pinned:
+            if self.expires_at is None:
+                raise ValueError("Pinned publications require an expiration timestamp (expires_at).")
+            if self.expires_at <= datetime.now(timezone.utc):
+                raise ValueError("The expiration timestamp (expires_at) must lie in the future.")
 
-class PublicationResponse(PublicationBase):
-    """Schema for outgoing responses including persistence metadata."""
-    id: int
-    author_id: int
-    created_at: datetime
-    updated_at: datetime | None = None
+        # Specification Rule 2: Calendar events require an event timestamp
+        if self.is_event and self.event_date is None:
+            raise ValueError("Calendar events require an event date (event_date).")
 
-    model_config = ConfigDict(from_attributes=True)
+        return self
 ```
 
-### Deterministic Validation and Error Responses
-
-When a client submits invalid parameters (for instance, a title shorter than 3 characters), FastAPI interrupts execution before touching domain logic and returns a standardized HTTP 422 response:
-
-```json
-{
-  "detail": [
-    {
-      "type": "string_too_short",
-      "loc": ["body", "title"],
-      "msg": "String should have at least 3 characters",
-      "input": "Hi"
-    }
-  ]
-}
-```
-
-By defining a dedicated response schema (`PublicationResponse`), internal database columns (such as password hashes or private flags) are filtered from the serialized response payload automatically.
+If a buggy or manipulated client attempts to submit a pinned post without `expires_at`, FastAPI rejects the request immediately with `HTTP 422 Unprocessable Entity`. Invalid state never reaches the database.
 
 ---
 
-## Layered Backend Architecture: Separation of Concerns
+## Three-Tier Layered Architecture in the Backend
 
-As applications expand, separating operational concerns becomes critical for long-term maintainability. The UPA Campus App enforces a three-tier architecture:
+When AI coding assistants generate backend code without architectural guidance, they frequently dump HTTP routing, permission checks, external API calls, and raw SQL queries into a single file. As soon as a business rule changes, the system breaks in unpredictable ways.
+
+To prevent this, the UPA Campus App divides the backend into three strictly separated layers:
 
 ```mermaid
 flowchart TD
-    subgraph PresentationLayer["1. API & Routing Layer (FastAPI Routers)"]
-        Router["Endpoint routes, HTTP verbs, Pydantic binding"]
+    subgraph PresentationLayer["1. Routing Layer (FastAPI Endpoints)"]
+        Router["HTTP Verbs, Status Codes, OAuth/JWT Check, Pydantic Schemas"]
     end
-    subgraph BusinessLayer["2. Service Layer (Business Logic)"]
-        Service["Domain rules, authorization checks, workflow coordination"]
+    subgraph BusinessLayer["2. Service Layer (Domain Logic & Integrations)"]
+        Service["Instagram Read-Only Lock, Google Classroom Sync, Directory Cache"]
     end
-    subgraph PersistenceLayer["3. Data Access Layer (Repositories & ORM)"]
-        Repo["SQLAlchemy queries, transaction handling, session lifecycle"]
+    subgraph PersistenceLayer["3. Repository Layer (Data Access)"]
+        Repo["SQLAlchemy Queries, Transactions, Audit Logging"]
         DB[(PostgreSQL)]
     end
 
-    Router -->|Calls| Service
-    Service -->|Uses| Repo
-    Repo -->|Reads / Writes| DB
+    Router -->|Validated DTO| Service
+    Service -->|Domain Command| Repo
+    Repo -->|Parameterized SQL| DB
 ```
 
-### Responsibilities by Tier
+### How the Service Layer Enforces Functional Specification Rules
 
-1. **Routing Layer (`api/v1/endpoints/`):**
-   * Declares URI paths, HTTP methods, and status codes.
-   * Validates authentication headers and binds request bodies to Pydantic schemas.
-   * Hands typed Data Transfer Objects (DTOs) down to the service layer.
-   * Contains zero database queries or domain business logic.
+While Pydantic validates the shape of a single request payload, the **Service Layer** enforces domain rules that depend on existing database state or external integrations:
 
-2. **Service Layer (`services/`):**
-   * Encapsulates core business rules and workflows.
-   * Evaluates operational rules: Has the author exceeded publication quotas? Is the course semester active?
-   * Coordinates multiple repositories or background tasks.
-   * Remains decoupled from the HTTP transport layer.
-
-3. **Repository Layer (`repositories/` & `models/`):**
-   * Manages data persistence via SQLAlchemy ORM.
-   * Prevents database query leakage across the codebase.
-   * Handles database sessions, filtering, joins, and transaction commits.
-
-### Implementation with Dependency Injection
-
-The interaction across all three layers is illustrated in the publication workflow:
+#### 1. Read-Only Protection for Synchronized Instagram Posts
+Why does the specification prohibit editing the caption and media of imported Instagram posts? Because a periodic background worker continuously synchronizes the official university Instagram feed. The service layer enforces this invariant strictly:
 
 ```python
-# 1. Routing Layer (api/v1/endpoints/publications.py)
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.publication import PublicationCreate, PublicationResponse
-from app.services.publication_service import PublicationService
-from app.core.security import get_current_user
-
-router = APIRouter(prefix="/publications", tags=["Publications"])
-
-@router.post("/", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED)
-def create_publication(
-    payload: PublicationCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    service = PublicationService(db)
-    return service.create_for_user(payload, user_id=current_user.id)
-```
-
-```python
-# 2. Service Layer (services/publication_service.py)
 from fastapi import HTTPException, status
-from app.repositories.publication_repository import PublicationRepository
-from app.schemas.publication import PublicationCreate
 
-class PublicationService:
-    def __init__(self, db):
-        self.repo = PublicationRepository(db)
-
-    def create_for_user(self, payload: PublicationCreate, user_id: int):
-        # Business policy: rate limiting per author
-        recent_count = self.repo.count_recent_by_user(user_id, minutes=5)
-        if recent_count >= 3:
+def update_publication(db_post, payload, current_user):
+    # Specification Rule: Instagram posts are read-only for text and media fields
+    if db_post.post_type == "INSTAGRAM":
+        if payload.title != db_post.title or payload.content != db_post.content:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Publication limit reached. Please wait a few minutes.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Synchronized Instagram publications are read-only.",
             )
-        return self.repo.create(payload, author_id=user_id)
+    # Internal campus metadata (such as pinning with expiration) remains editable
+    db_post.is_pinned = payload.is_pinned
+    db_post.expires_at = payload.expires_at
+    return db_post
 ```
 
-```python
-# 3. Repository Layer (repositories/publication_repository.py)
-from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from app.models.publication import Publication
-from app.schemas.publication import PublicationCreate
+#### 2. Google Workspace Directory Cache for Instant Audience Filtering
+In the Web-Admin portal, the marketing team targets announcements using a flat alphabetical list of real Google Workspace groups (`@example-campus.edu`). Querying the external Google Admin Directory API live every time an editor opens the form would add seconds of latency and trigger rate limits. Instead, the backend caches the directory groups locally, sorts them alphabetically, and serves them to the Web-Admin instant filter in under 5 milliseconds.
 
-class PublicationRepository:
-    def __init__(self, db: Session):
-        self.db = db
-
-    def count_recent_by_user(self, user_id: int, minutes: int) -> int:
-        threshold = datetime.now(timezone.utc) - timedelta(minutes=minutes)
-        return self.db.query(Publication).filter(
-            Publication.author_id == user_id,
-            Publication.created_at >= threshold
-        ).count()
-
-    def create(self, payload: PublicationCreate, author_id: int) -> Publication:
-        db_obj = Publication(
-            title=payload.title,
-            content=payload.content,
-            category=payload.category,
-            author_id=author_id,
-        )
-        self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
-        return db_obj
-```
-
-This decoupled design ensures isolation: Changes to the database schema affect only repository queries, while API validation updates remain confined to Pydantic definitions.
+#### 3. Identity Federation, Google Classroom Sync, and Least Privilege
+* **Institutional Domain Enforcement:** During Google OAuth 2.0 login, the backend cryptographically verifies the Google ID token and rejects any account outside the university domain (`@example-campus.edu`).
+* **Live Google Classroom Synchronization:** Using the authorized OAuth token, the `ClassroomService` fetches the student's upcoming coursework deadlines and merges them with internal university events for the Agenda module.
+* **Least Privilege Access Control:** New user accounts initialize with zero administrative permissions checked by default, and every mutating endpoint under `/api/publications` or `/api/roles` verifies explicit granular permissions via FastAPI Dependency Injection (`Depends(require_permission)`).
 
 ---
 
 ## Key Takeaways
 
-1. **Perimeter Security through Type Contracts:** Pairing FastAPI with Pydantic ensures declarative validation at the system boundary. Invalid requests are rejected before executing business code, preventing injection flaws and invalid system states.
-2. **Engineering Efficiency via OpenAPI:** Automated OpenAPI schema generation removes communication friction between frontend and backend engineers, speeding up integration and automated contract testing.
-3. **Maintainability via Layered Isolation:** Strict separation into routes, services, and repositories decouples transport protocols from core domain logic. The architecture remains cleanly testable and scalable as features grow.
+1. **The Backend Is the Only True Security Boundary:** Because client interfaces can always be bypassed, authentication, role checks, and schema validation must be enforced unconditionally on the server.
+2. **Pydantic Turns Specification Rules into Executable Contracts:** Requirements such as mandatory expiration timestamps on pinned banners (`is_pinned` requires `expires_at`) run as declarative validators that block malformed requests with `HTTP 422`.
+3. **Layered Architecture and Smart Caching:** Separating routers, services, and repositories keeps domain logic maintainable, protects synchronized Instagram posts from lost updates, and accelerates Google Workspace group targeting via local caching.

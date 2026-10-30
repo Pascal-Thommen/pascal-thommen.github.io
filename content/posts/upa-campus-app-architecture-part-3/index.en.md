@@ -1,8 +1,8 @@
 ---
 title: "UPA Campus App (Chapter 3): Secure Networking with NetBird"
 date: 2026-10-30T16:20:00Z
-description: "Zero-Trust ingress without open firewall ports: How the UPA Campus App combines WireGuard mesh tunnels and Nginx reverse proxies for secure networking."
-summary: "How do you securely expose internal servers without router port forwarding? Chapter 3 explains NetBird WireGuard mesh, reverse proxies, and NAT traversal."
+description: "Zero-Trust Ingress and Single-Origin Routing: How the UPA Campus App combines WireGuard mesh tunnels and Nginx reverse proxies to eliminate CORS issues, open router ports, and unprotected uploads."
+summary: "How do you expose internal servers securely without port forwarding? Chapter 3 explains NetBird WireGuard mesh networking, single-origin reverse proxies, and perimeter media upload protection."
 tags: ["Networking", "NetBird", "Nginx", "Software Architecture", "Enterprise Systems"]
 categories: ["Architecture", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -17,130 +17,128 @@ series_part_title: "Secure Networking with NetBird"
 hiddenInList: true
 ---
 
-Traditional server deployments often struggle with network security and restrictive firewall policies: Direct port forwarding exposes internal services to the global internet, while enterprise or campus networks strictly block incoming connections. The UPA Campus App resolves this conflict by combining an Nginx reverse proxy with an encrypted NetBird WireGuard mesh. This third installment examines the risks of open server ports, the architectural purpose of a reverse proxy, and how to publish secure domains without modifying local router settings.
+Traditional server deployments in university and enterprise networks regularly run into two roadblocks: opening ports on a router exposes internal services to automated internet-wide attacks, while campus firewalls and Carrier-Grade NAT (CGNAT) block incoming connections altogether. The UPA Campus App resolves this dilemma by pairing a local Nginx reverse proxy with an encrypted NetBird WireGuard tunnel (Architectural Decision 3.4). This third chapter builds the mental model of modern ingress architecture: why production web apps unify all services behind a single origin and how a server becomes securely reachable worldwide without opening a single router port.
 
 ---
 
-## The Problem with Open Server Ports
+## Why Traditional Port Forwarding Fails in Production
 
-The conventional way to expose a local service to the internet relies on port forwarding at the router:
+The conventional way to publish a local web server to the internet relies on router port forwarding:
 
 ```mermaid
 flowchart LR
-    Attacker["Attackers & Automated Bots (Internet)"] -->|Automated Port Scans| Router["Local Router / Firewall"]
-    Router -->|Port Forwarding 80/443/5432| Server["Internal Server"]
-    Server --> Exploit["Direct Access to Application & Database"]
+    Attacker["Attackers & Botnets (Public Internet)"] -->|Automated Port Scans| Router["Local Router / Firewall"]
+    Router -->|Port Forwarding 80 / 443 / 5432| Server["Internal Server"]
+    Server --> Exploit["Direct Access to API & Database"]
 ```
 
-This setup introduces severe security hazards for any production system:
+For campus and enterprise systems, this approach breaks down for three reasons:
+1. **Automated Attack Waves:** Search engines such as Shodan and Censys scan the public IPv4 address space continuously. Within minutes of opening a port, automated bots begin brute-forcing credentials and probing for unpatched vulnerabilities (CVEs).
+2. **Human Configuration Risk:** Accidentally exposing database port `5432` or an unauthenticated debug service during a quick deployment test immediately puts student records at risk.
+3. **Lack of Router Control on Campus:** University engineering teams rarely control central campus firewall rules. Furthermore, many internet service providers use Carrier-Grade NAT (CGNAT), sharing a single public IPv4 address across hundreds of customers and making inbound port forwarding technically impossible.
 
-1. **Unfiltered Exposure:** As soon as a port is opened on a router, unfiltered TCP and UDP packets reach the internal host directly.
-2. **Automated Attack Waves:** Scanning engines such as Shodan and Censys index newly open ports within minutes. Botnets immediately launch automated password brute-force attacks, probe for known vulnerabilities (CVEs), and search for common web server misconfigurations.
-3. **Configuration Drift and Human Error:** Inadvertently opening database ports such as 5432 or internal administration endpoints can cause immediate data breaches or ransomware infections.
-4. **Lack of Router Control:** In university or corporate settings, development teams rarely possess administrative permissions to modify gateway routers. Furthermore, Carrier-Grade NAT (CGNAT) often makes inbound port forwarding technically impossible because multiple subscribers share a single public IPv4 address.
-
-Modern zero-trust architectures avoid opening inbound ports on edge routers entirely.
+Modern system architectures therefore invert the connection direction: instead of opening ports from the outside in, the server establishes an encrypted tunnel from the inside out.
 
 ---
 
-## The Reverse Proxy Principle: Nginx as an Architectural Shield
+## The Reverse Proxy Mental Model: Why a Single Origin Unifies Everything
 
-Before network traffic reaches application code, it must be inspected, decoupled, and routed. This role belongs to the reverse proxy.
+When business informatics students or vibe-coders build a prototype locally, they often run the frontend on `localhost:3000` and the backend on `localhost:8000`. Moving that setup to production immediately triggers **Same-Origin Policy (CORS)** blocks in the browser and forces clients to juggle multiple ports.
 
-While a forward proxy handles outbound requests from internal clients to the internet, a reverse proxy accepts inbound client requests on behalf of backend services:
+An **Nginx Reverse Proxy** solves this by acting as the single front door in front of all containers, unifying the entire platform under one domain and origin:
 
 ```mermaid
 flowchart TD
-    Client["Client Request"] --> Nginx["Nginx Reverse Proxy"]
-    subgraph Container_Network["Isolated Backend Services"]
-        Nginx -->|Route /| Frontend["Static Web Assets (Admin PWA)"]
-        Nginx -->|Route /api/| FastAPI["FastAPI Backend (Port 8000)"]
-        Nginx -->|Route /uploads/| Uploads["Media Storage (Uploads)"]
+    Client["Client Request (HTTPS)"] --> Nginx["Nginx Reverse Proxy (Internal Port 80)"]
+    subgraph Container_Network["Isolated Docker Bridge Network"]
+        Nginx -->|Route / & /app/| WebApp["Campus Web-App & Desktop QR Landing Page"]
+        Nginx -->|Route /dashboard/| AdminUI["Web-Admin Editorial Cockpit"]
+        Nginx -->|Route /api/| FastAPI["FastAPI Backend (backend:8000)"]
+        Nginx -->|Route /uploads/| Uploads["Media Volume (Images, MP4/WEBM, PDF)"]
     end
 ```
 
-In the UPA Campus App, Nginx fulfills three essential architectural duties:
+### How the Nginx Routing Table Maps to the Functional Specification
 
-### 1. Decoupling and Single Entry Point
-Clients do not connect directly to the application backend or database. Nginx serves as the primary interface. Internal containers such as FastAPI and PostgreSQL remain isolated within a dedicated Docker bridge network with no direct host port bindings.
+Inspecting the `nginx.conf` of the UPA Campus App reveals how each URL route directly serves a requirement from the functional specification:
 
-### 2. Path-Based Ingress Routing
-Nginx inspects the Uniform Resource Identifier (URI) of each request and steers it to the appropriate destination:
-* Requests targeting `/` or `/dashboard/` serve static files for the administrative web portal directly from the container file system.
-* Requests with the `/api/` prefix route to the internal container at `http://backend:8000/api/`.
-* Requests to `/uploads/` stream uploaded media assets.
-* Unmatched paths fall back to `index.html` via `try_files` to enable seamless client-side single-page application (SPA) routing.
+```nginx
+server {
+    listen 80;
+    server_name localhost;
+    client_max_body_size 25M;
 
-### 3. Security and Governance
-Nginx sanitizes and bounds requests before they hit the Python runtime:
-* Restricting payload size (`client_max_body_size 15M`) prevents denial-of-service attempts via bloated uploads.
-* Header management (`X-Real-IP`, `X-Forwarded-Proto`, `Host`) guarantees that the backend knows the genuine client origin and transmission protocol.
-* Static caching headers reduce server load and latency for repeat visits.
+    # 1. Forward API traffic to the FastAPI container
+    location /api/ {
+        proxy_pass http://backend:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 2. Deliver uploaded media (posters, videos, PDFs) with browser caching
+    location /uploads/ {
+        proxy_pass http://backend:8000/uploads/;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+    }
+
+    # 3. Serve the Web-Admin cockpit for the marketing team
+    location /dashboard/ {
+        alias /usr/share/nginx/html/dashboard/;
+        try_files $uri $uri/ /dashboard/index.html;
+    }
+
+    # 4. Serve the mobile Web-App and desktop QR landing page
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /app/index.html;
+    }
+}
+```
+
+Three architectural mechanisms work together here:
+* **Eliminating CORS Complexity via Single Origin:** Because the browser loads the user interface (`/dashboard/`), the REST API (`/api/`), and event posters (`/uploads/`) from the exact same domain, every request satisfies the browser's same-origin policy without brittle cross-origin hacks.
+* **Protecting the Unified Media Upload (`client_max_body_size`):** According to the specification, the Web-Admin publication editor supports short event videos (`MP4` and `WEBM`) alongside posters and PDFs. Setting `client_max_body_size 25M` permits legitimate campus videos while rejecting multi-gigabyte Denial-of-Service payloads at the network perimeter with `HTTP 413 (Content Too Large)` before they ever touch Python memory.
+* **SPA Routing via `try_files`:** When an editor refreshes `/dashboard/publicaciones` in the browser, Nginx does not fail looking for a physical file named `publicaciones`; instead, `try_files` serves `/dashboard/index.html` so the client-side router restores the exact view.
 
 ---
 
-## NetBird Ingress: Encrypted Mesh Tunneling
+## NetBird Ingress: Zero-Trust Access Without Open Router Ports
 
-If edge firewalls block all inbound traffic, how do authorized clients reach the Nginx proxy? The answer is NetBird.
-
-NetBird combines the WireGuard cryptographic protocol with an overlay peer-to-peer mesh:
+How does a student's smartphone reach the local Nginx container when zero ports are open on the campus firewall? **NetBird** provides the answer on top of the **WireGuard** protocol:
 
 ```mermaid
 flowchart LR
-    subgraph PublicNet["Public Internet"]
-        Client["Client / Browser"]
-        NetBirdCloud["NetBird Ingress Service\n(upa.eu1.netbird.services)"]
+    subgraph PublicNet["Public Space"]
+        Client["Smartphone / Browser"]
+        NetBirdIngress["NetBird Ingress Proxy\n(campus.example-tunnel.internal)"]
     end
-    subgraph TunnelMechanism["Encrypted Transport"]
-        Outbound["Outbound WireGuard Handshake\n(No open router ports needed)"]
+    subgraph TunnelMechanism["Encrypted WireGuard Tunnel"]
+        Outbound["Outbound Connection from Server\n(0 Open Ports in Campus Firewall)"]
     end
-    subgraph PrivateServer["Server Environment (Campus / Datacenter)"]
-        NetBirdDaemon["Local NetBird Client / Endpoint"]
+    subgraph PrivateServer["Internal Campus Server"]
+        NetBirdDaemon["Local NetBird Daemon"]
         Nginx["Nginx Reverse Proxy\n(127.0.0.1:8085)"]
-        AppServices["FastAPI & PostgreSQL\n(Internal Docker Network Only)"]
+        AppServices["FastAPI & PostgreSQL\n(Isolated Docker Network)"]
     end
 
-    Client -->|HTTPS 443| NetBirdCloud
-    NetBirdDaemon -->|Outbound UDP Connection| NetBirdCloud
-    NetBirdCloud -.->|Encrypted P2P Stream| Outbound
+    Client -->|HTTPS 443| NetBirdIngress
+    NetBirdDaemon -->|Outbound Handshake| NetBirdIngress
+    NetBirdIngress -.->|End-to-End Encrypted| Outbound
     Outbound --> NetBirdDaemon
-    NetBirdDaemon -->|Local Loopback Ingress| Nginx
+    NetBirdDaemon -->|Loopback 127.0.0.1:8085| Nginx
     Nginx --> AppServices
 ```
 
-### 1. Outbound-Only Connections
-The NetBird daemon running on the host initiates an outbound connection to coordination servers (signal and relay nodes). Because stateful firewalls permit outbound traffic and track response packets automatically, this tunnel requires no open inbound ports on the router. Connection initiation occurs strictly from the inside out.
-
-### 2. NAT Traversal (STUN / ICE)
-Using Interactive Connectivity Establishment (ICE), NetBird establishes direct peer-to-peer tunnels across firewalls and NAT layers. When symmetric NAT blocks direct communication, encrypted relay nodes forward packets with minimal overhead.
-
-### 3. Domain Provisioning via NetBird Ingress
-Through NetBird Ingress, the host is assigned an authenticated domain name (such as `upa.eu1.netbird.services`). NetBird terminates or validates TLS and forwards authorized HTTPS requests through the WireGuard tunnel directly into the host.
-
-### 4. Local Binding to 127.0.0.1
-The Nginx container does not publish port 80 to `0.0.0.0`. Instead, it explicitly binds to the local loopback interface:
-
-```yaml
-ports:
-  - "127.0.0.1:8085:80"
-```
-
-This configuration prevents a dangerous security gap: On Linux hosts, Docker manipulates `iptables` rules directly. Binding to `0.0.0.0:8085:80` would bypass local host firewalls like UFW. Binding strictly to `127.0.0.1` ensures that only processes running on the local host can reach Nginx. The NetBird daemon acts as that trusted local consumer.
+1. **Inside-Out Connection Initiation:** The NetBird daemon on the campus server initiates an outbound encrypted WireGuard tunnel to the ingress node (`campus.example-tunnel.internal`). Because stateful firewalls allow outbound connections from internal servers, no port forwarding is needed on the router.
+2. **Automated TLS Termination:** The ingress endpoint provisions valid HTTPS certificates (which are mandatory for Google OAuth 2.0 redirects and PWA Service Workers) and forwards traffic end-to-end encrypted through the WireGuard tunnel.
+3. **Loopback Handoff (`127.0.0.1:8085`):** On the host server, the NetBird daemon decrypts the tunnel traffic and hands it directly to `127.0.0.1:8085`. As shown in Chapter 2, the Nginx container listens exclusively on this loopback address, keeping it completely unreachable from untrusted machines on the local network.
 
 ---
 
-## The Cohesive Zero-Trust Defense
+## Key Takeaways
 
-Unifying these layers yields a resilient zero-trust architecture:
-
-1. **Total Invisibility:** Port scans against the public IP address of the campus router find zero listening services. Neither application servers nor databases are discoverable.
-2. **Cryptographic Isolation:** All transit traffic relies on WireGuard with modern cryptographic primitives (ChaCha20, Poly1305, Curve25519).
-3. **Compartmentalized Data:** The database and API execute within an isolated Docker bridge network. Even if one component faces issues, network segmentation prevents unauthorized lateral movement.
-
----
-
-## Summary
-
-1. **Security Through Invisibility:** Outbound-only WireGuard tunnels replace external port forwarding, eliminating automated internet scans and perimeter attacks.
-2. **Clean Separation of Concerns:** A dedicated Nginx reverse proxy decouples routing and static assets from backend business logic.
-3. **Infrastructure Agnostic:** NetBird guarantees reliable ingress in restrictive university and enterprise networks without requiring custom exceptions from central network administrators.
+1. **Outbound Tunnels Instead of Open Ports:** Using NetBird and WireGuard eliminates router port forwarding and makes the server invisible to automated internet port scanners.
+2. **Single-Origin Architecture via Nginx:** The reverse proxy unifies the student app, Web-Admin cockpit, REST API (`/api/`), and media storage (`/uploads/`) under a single domain, preventing CORS failures and shielding the backend from oversized uploads.
+3. **Direct Support for Specification Rules:** Valid HTTPS for institutional Google OAuth (`@example-campus.edu`), fast browser caching for posters, and strict upload size limits for event videos are enforced directly at this network layer.

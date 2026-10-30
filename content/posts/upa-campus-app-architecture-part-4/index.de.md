@@ -1,8 +1,8 @@
 ---
 title: "UPA Campus App (Kapitel 4): Frontend und PWA"
 date: 2026-10-30T16:35:00Z
-description: "Architektur moderner Webclients: Wie die UPA Campus App Nginx für statische Bereitstellung, Progressive Web Apps für native App-Features und asynchrone REST-APIs für dynamisches Rendering kombiniert."
-summary: "Warum keine native App aus dem Store? Kapitel 4 analysiert Progressive Web Apps, statische Auslieferung per Nginx, Service Worker Caching und dynamische API-Kommunikation."
+description: "Architektur moderner Clients: Wie die UPA Campus App entkoppelte Web-Portale, Progressive Web Apps, lokale Offline-Speicher und die vier Module des Pflichtenhefts im Client umsetzt."
+summary: "Wie arbeiten Browser, PWA-Service-Worker und mobile Clients mit dem Backend zusammen? Kapitel 4 erklärt Client-State, Offline-Caching und die technische Logik hinter jedem UI-Modul des Pflichtenhefts."
 tags: ["Frontend", "PWA", "Nginx", "JavaScript", "Softwarearchitektur", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -17,211 +17,116 @@ series_part_title: "Frontend und PWA"
 hiddenInList: true
 ---
 
-Moderne Unternehmensanwendungen verlangen eine native Benutzererfahrung auf mobilen Endgeräten, ohne die organisatorische und finanzielle Last nativer App-Store-Ökosysteme zu tragen. Die UPA Campus App setzt für ihr Web-Admin- und Studierendenportal auf eine Progressive Web App (PWA) in Kombination mit einer strikt entkoppelten Single-Page-Architektur. Dieser vierte Teil analysiert die architektonischen Vorteile von PWAs gegenüber nativen Store-Anwendungen, die Trennung zwischen statischer Server-Auslieferung und clientseitiger Browser-Ausführung, das Caching über Service Worker sowie die asynchrone API-Kommunikation.
+Moderne Web-Applikationen berechnen ihre Benutzeroberfläche nicht mehr bei jedem Klick neu auf dem Server, sondern verlagern Darstellung, Zustandsverwaltung (State Management) und Zwischenspeicherung vollständig auf das Endgerät des Nutzers. Die UPA Campus App nutzt diese Entkopplung, um über dasselbe Backend sowohl das Desktop-Redaktionsportal (`web-admin`), die mobile Progressive Web App (PWA) als auch den nativen Android-Client (Kotlin und Jetpack Compose, Architekturentscheidung 3.1) zu versorgen. Dieses vierte Kapitel vermittelt das mentale Modell moderner Frontend-Clients und zeigt, wie die konkreten Anforderungen des Pflichtenhefts vom Notfall-Banner über das Vollbild-Modal bis zum Read-Only-Schutz im Editor im Client umgesetzt werden.
 
 ---
 
-## Progressive Web Apps: Das Web als universelle Plattform
+## Server-Rendering vs. Entkoppelte Client-Architektur
 
-Im Enterprise-Kontext scheitern native Mobile-Entwicklungen häufig an überdimensionierten Betriebs- und Wartungskosten: Separate Codebasen für iOS (Swift) und Android (Kotlin) verdoppeln Entwicklungsaufwände, während starre Freigabeprozesse der App Stores Bugfixes und zeitkritische Funktions-Rollouts um Tage verzögern.
+In klassischen Websystemen (wie traditionellen PHP- oder Server-Template-Anwendungen) erzeugt der Server bei jedem Klick ein komplett neues HTML-Dokument. Bei schwachem Mobilfunknetz im Hörsaal führt das zu weißen Ladebildschirmen und abgebrochenen Formularen.
 
-Eine Progressive Web App (PWA) schließt die Lücke zwischen klassischer Webseite und nativer Anwendung, indem sie standardisierte Web-APIs nutzt, um native Gerätefunktionen bereitzustellen:
-
-```mermaid
-flowchart TD
-    subgraph ClientLayer["Endgerät des Nutzers (iOS / Android / Desktop)"]
-        Browser["Moderner Web-Browser (Chromium / WebKit)"]
-        PWA["Installierte PWA (Standalone Modus)"]
-        Storage["Lokaler Speicher (Cache Storage & IndexedDB)"]
-    end
-    subgraph AppFeatures["Native App-Eigenschaften"]
-        Icon["Homescreen-Icon & Splash Screen"]
-        Offline["Offline-Verfügbarkeit via Service Worker"]
-        NoStore["Installation ohne Store-Account & ohne Plattform-Tax"]
-    end
-    Browser --> PWA
-    PWA --> Storage
-    PWA --> AppFeatures
-```
-
-Die architektonischen Kernvorteile im Überblick:
-
-1. **Plattformunabhängigkeit und Single Codebase:** Eine einzige HTML-, CSS- und JavaScript-Codebasis bedient alle Betriebssysteme (iOS, Android, Windows, macOS, Linux). Das eliminiert redundante Geschäftslogik und senkt Wartungskosten nachhaltig.
-2. **Unmittelbare Release-Zyklen:** Änderungen und Sicherheitspatches sind in dem Moment für alle Anwender verfügbar, in dem der Webserver aktualisiert wird. Es gibt keine Gatekeeper, keine manuellen Store-Reviews und keine fragmentierten Nutzerbasen mit veralteten App-Versionen.
-3. **Direkte Installation (Add to Home Screen):** Nutzer installieren die Anwendung mit einem Klick direkt aus dem Browser auf ihrem Homescreen. Die Anwendung startet in einem eigenen Fenster ohne störende Browser-Adressleiste (`standalone`), besitzt ein eigenes Icon und verhält sich optisch wie eine native Applikation.
-4. **Wirtschaftliche Effizienz:** Durch den Verzicht auf offizielle App Stores entfallen jährliche Entwicklergebühren sowie obligatorische Plattformabgaben auf Transaktionen.
-
-### Das Web App Manifest
-
-Technisches Fundament für die Erkennung als PWA ist das Web App Manifest (`manifest.json`), eine standardisierte JSON-Konfigurationsdatei. Sie deklariert die visuellen und funktionalen Metadaten für das Betriebssystem:
-
-```json
-{
-  "name": "UPA Campus Portal",
-  "short_name": "UPA Portal",
-  "start_url": "/dashboard/publicaciones",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a365d",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
-```
-
-Über das Attribut `display: standalone` instruiert die Konfiguration das Betriebssystem, Navigationsleisten und Menüs des Browsers vollständig auszublenden. Der Anwender interagiert mit einer fokussierten Vollbild-Oberfläche.
-
----
-
-## Auslieferung und Browser Execution: Server vs. Client
-
-Klassische monolithische Webframeworks (wie Django, Ruby on Rails oder PHP) erzeugen HTML-Dokumente dynamisch auf dem Server: Bei jeder Nutzeraktion berechnet der Webserver die Seite neu und sendet fertiges HTML über das Netzwerk. 
-
-Die UPA Campus App wählt ein strikt entkoppeltes Single-Page-Application (SPA) Modell. Der Nginx Frontend Container dient als reiner Auslieferungsknoten für statische Artefakte, während die Rendering- und Zustandskontrolle vollständig im Browser abläuft:
+Eine moderne Single-Page-Application (SPA) und Progressive Web App (PWA) trennt das **Programmgerüst (App Shell)** strikt von den **Nutzdaten (JSON)**:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Nutzer / Browser
+    actor User as Studierender / Redakteur
     participant Nginx as Nginx Frontend Container
     participant Backend as FastAPI Backend Container
     participant DB as PostgreSQL
 
-    Note over User,Nginx: Phase 1: Statische Bereitstellung (App Shell)
+    Note over User,Nginx: Phase 1: Einmaliges Laden der App Shell
     User->>Nginx: HTTP GET /dashboard/publicaciones
-    Nginx-->>User: 200 OK (index.html, app.js, style.css)
-    Note over User: Browser parst HTML, instanziiert JS Engine & baut DOM auf
+    Nginx-->>User: 200 OK (index.html, style.css, app.js)
+    Note over User: Browser baut DOM auf & speichert App Shell im lokalen Cache
 
-    Note over User,DB: Phase 2: Dynamische Laufzeit & Datenfluss
-    User->>Nginx: HTTP GET /api/v1/publications (Authorization: Bearer JWT)
-    Nginx->>Backend: Proxy Pass an http://backend:8000/api/v1/publications
-    Backend->>DB: SQL Query ausführen
-    DB-->>Backend: Rohe Datensätze
+    Note over User,DB: Phase 2: Asynchroner JSON-Datenfluss zur Laufzeit
+    User->>Nginx: HTTP GET /api/publications (Bearer JWT)
+    Nginx->>Backend: Reverse Proxy an http://backend:8000/api/publications
+    Backend->>DB: SQL SELECT auf vereinheitlichte Tabelle posts
+    DB-->>Backend: Ergebnismenge
     Backend-->>Nginx: 200 OK (JSON Payload)
-    Nginx-->>User: 200 OK (JSON Daten)
-    Note over User: JavaScript rendert Feed & aktualisiert UI ohne Reload
+    Nginx-->>User: 200 OK (JSON Array)
+    Note over User: Client rendert Feed-Karten ohne Seiten-Reload
 ```
 
-### Die Aufgabenteilung im Detail:
-
-1. **Was auf dem Server passiert:**
-   * **Reine statische Dateibereitstellung:** Nginx liest vorkompilierte HTML-, CSS-, JavaScript- und Bilddateien direkt aus dem Container-Dateisystem (`/usr/share/nginx/html`).
-   * **Gzip-Kompression und Caching-Header:** Textbasierte Ressourcen werden komprimiert und mit präzisen HTTP-Cache-Headern (`Cache-Control: public, max-age=86400`) ausgeliefert, während die Einstiegsseite `index.html` ein striktes `no-cache` erhält, um neue Deployments sofort wirksam zu machen.
-   * **Minimale Last:** Da Nginx keine serverseitigen Templates auswertet und keine Geschäftslogik ausführt, verbraucht der Frontend-Container kaum Arbeitsspeicher und CPU. Tausende gleichzeitige Verbindungen lassen sich auf kleinster Hardware bedienen.
-
-2. **Was im Browser des Nutzers passiert:**
-   * **Parsing und DOM-Konstruktion:** Die Rendering-Engine des Browsers (Blink, Gecko oder WebKit) parst den HTML-Quelltext, konstruiert den Document Object Model (DOM) Baum und verarbeitet Stylesheets.
-   * **JavaScript-Ausführung:** Die lokale Script-Engine (wie V8 in Chrome) führt den Anwendungscode aus, initialisiert globale Variablen, bindet Event-Listener an Steuerelemente und übernimmt das clientseitige Routing.
-   * **Dynamisches Re-Rendering:** Änderungen des Anwendungszustands führen nicht zu einem Neuladen der gesamten Webseite. Stattdessen modifiziert JavaScript gezielt einzelne Knoten im DOM.
+1. **Aufgabe des Servers (Nginx):** Liefert beim ersten Aufruf lediglich die statischen Programmdateien (`index.html`, Stylesheets, JavaScript) aus und verbraucht dabei kaum CPU-Leistung.
+2. **Aufgabe des Clients (Browser / App):** Hält den aktuellen Anwendungszustand im Arbeitsspeicher, ruft im Hintergrund gezielt JSON-Daten über `/api/` ab und aktualisiert bei einer Aktion (etwa einer 1-Klick-Veranstaltungsanmeldung) nur den betroffenen Teilbaum im Document Object Model (DOM).
 
 ---
 
-## Service Worker und lokales Caching
+## PWA, Desktop-QR-Weiche und Duale Offline-Persistenz
 
-Ein Service Worker ist ein im Hintergrund laufendes JavaScript-Skript, das der Browser getrennt von der eigentlichen Webseite ausführt. Er fungiert als programmierbarer Netzwerk-Proxy zwischen dem Webclient, dem lokalen Speicher und dem Internet:
+Warum kombiniert die Plattform Web-Standards (PWA) mit einer nativen mobilen Persistenzstrategie? Ein Blick auf den Alltag am Campus liefert die Begründung:
 
 ```mermaid
 flowchart TD
-    Client["Browser UI / DOM"] -->|HTTP Request| SW["Service Worker (Proxy im Browser)"]
-    SW -->|1. Cache Prüfung| Cache["Cache Storage (Lokaler Speicher)"]
-    Cache -->|Treffer (Cache Hit)| SW
-    SW -->|Antwort liefern (< 50ms)| Client
-    SW -.->|2. Cache Miss / Dynamische Daten| Network["Server / Nginx (/api/)"]
-    Network -.->|Netzwerk-Antwort| SW
-    SW -.->|Im Cache ablegen & UI bedienen| Client
+    subgraph ClientLayer["Endgerät (Smartphone / Desktop)"]
+        Viewport{"Viewport-Erkennung"}
+        DesktopLanding["Desktop-Ansicht: Minimalistische QR-Landingpage + App-Vorschau"]
+        MobilePWA["Mobil-Ansicht: Installierbare PWA (Standalone) / Native App"]
+        LocalCache["Lokale Persistenz (Cache Storage / IndexedDB / SQLite Room)"]
+    end
+    subgraph OfflineFeatures["Vorteile im Campus-Alltag"]
+        InstantBoot["Start in Millisekunden ohne Ladebalken"]
+        OfflineRead["Agenda & News bleiben im Funkloch lesbar"]
+        ZeroFriction["Direkt-Installation per QR-Code ohne Store-Hürde"]
+    end
+    Viewport -->|Desktop Browser| DesktopLanding
+    Viewport -->|Smartphone| MobilePWA
+    MobilePWA --> LocalCache
+    LocalCache --> OfflineFeatures
 ```
 
-### 1. Die App-Shell-Architektur
-Der Service Worker ermöglicht die Umsetzung der App-Shell-Architektur. Beim ersten Aufruf der App speichert der Service Worker das Grundgerüst (HTML, Stylesheets, Logos, Icons und Kern-JavaScript) im Cache Storage des Browsers. Bei Folgeaufrufen lädt die Shell direkt aus dem lokalen Speicher, ohne eine einzige Netzwerk-Anfrage abzuwarten. Das reduziert Ladezeiten auf wenige Millisekunden.
-
-### 2. Caching-Strategien nach Einsatzzweck
-Nicht alle Daten dürfen identisch behandelt werden. Eine solide Architektur differenziert strikt:
-
-* **Cache First (Assets & Fonts):** Statische Design-Komponenten und Bibliotheken ändern sich selten. Der Service Worker prüft zuerst den lokalen Cache. Nur wenn die Datei dort fehlt, erfolgt ein Netzwerk-Download.
-* **Network First mit Cache-Fallback (Inhalte & Feeds):** Relevante Daten wie studentische Veröffentlichungen oder Vorlesungspläne müssen aktuell sein. Der Service Worker versucht zuerst, die neuesten Daten vom Backend abzurufen. Schlägt die Verbindung fehl (beispielsweise in Hörsälen mit schwachem Funknetz), serviert er die zuletzt erfolgreich geladenen Datensätze aus dem Cache.
-
-### 3. Grundlegende Offline-Fähigkeit
-Fällt das Netzwerk komplett aus, stürzt die Anwendung nicht mit einer Standard-Fehlerseite ab. Die App-Shell bleibt voll funktionsfähig, signalisiert dem Nutzer über dezente Banner den Offline-Status und erlaubt das Durchsuchen bereits gecachter Informationen.
+* **Die minimalistische Desktop-Landingpage mit QR-Weiche:** Öffnet ein Studierender die Hauptadresse der Campus-App am Laptop, wäre eine breitgezogene Smartphone-Oberfläche unübersichtlich. Das Frontend erkennt daher die Bildschirmbreite und zeigt auf dem Desktop automatisch eine aufgeräumte Landingpage mit einem einzigen zentralen QR-Code zur direkten Smartphone-Installation sowie einer visuellen Vorschau der App-Bildschirme.
+* **Web App Manifest (`manifest.json`):** Auf dem Smartphone sorgt das Manifest mit `"display": "standalone"` dafür, dass die Web-App ohne Browser-Adressleiste im Vollbild startet und als eigenes Icon auf dem Homescreen liegt.
+* **Duale Persistenz für Offline-Resilienz (Architekturentscheidung 3.2):** Während PostgreSQL auf dem Server als zentrales Buchungssystem arbeitet, nutzen die Clients einen lokalen Zwischenspeicher (Service Worker `Cache Storage` im Web sowie `SQLite / Room` in der nativen Android-App). Statische Icons und Stylesheets werden nach dem Prinzip **Cache First** sofort aus dem Gerätespeicher geladen. Für den Campus-Feed und den Kalender gilt **Network First mit Cache-Fallback**: Ist das WLAN im Untergeschoss-Hörsaal unterbrochen, zeigt die App nahtlos den zuletzt synchronisierten Stand an, statt mit einer Fehlermeldung abzustürzen.
 
 ---
 
-## API-Kommunikation und dynamisches Rendering
+## Wie das Pflichtenheft die vier UI-Module im Client formt
 
-Die Trennung von Benutzeroberfläche und Datenhaltung setzt eine klare Kommunikationsschnittstelle voraus. Die UPA Campus App nutzt die native `Fetch API` für asynchrone HTTP-Abfragen an das FastAPI-Backend.
+Für Wirtschaftsinformatiker und Vibe-Coder ist entscheidend zu verstehen, wie die Anforderungen des Pflichtenhefts in konkrete Zustandsregeln der Benutzeroberfläche übersetzt werden:
 
-### Asynchrone Datenbeschaffung mit Bearer-Token
-Statt synchroner Formular-Übertragungen mit Seitenwechsel sendet die Anwendung Hintergrund-Requests mit strukturierten JSON-Nutzlasten:
+### 1. Modul Inicio (Campus-Feed, Vollbild-Modal und 1-Klick-RSVP)
+* **Dedizierter Slot für Notfall-Banner:** Eilmeldungen (`EMERGENCY_BANNER`, etwa bei kurzfristigem Vorlesungsausfall wegen Unwetters) dürfen beim Scrollen nicht zwischen normalen Beiträgen untergehen. Der Client filtert angeheftete Eilmeldungen vor dem Rendern heraus und platziert sie in einem eigenen, farblich hervorgehobenen Warnbereich oberhalb des Feeds.
+* **Vollbild-Modal statt Seitenwechsel:** Tippt ein Studierender auf eine Veranstaltungsankündigung, öffnet sich ein **Vollbild-Modal**, das den gesamten Text, hochauflösende Plakate, eingebettete Videos (`MP4`/`WEBM`) oder PDF-Anhänge anzeigt. Beim Schließen des Modals befindet sich der Nutzer sofort wieder an exakt derselben Scroll-Position im Feed.
+* **Optimistic UI beim 1-Klick-RSVP:** Ein Tipp auf "Teilnehmen" sendet asynchron ein `POST /api/v1/posts/{id}/register` im Hintergrund und schaltet den Button ohne Seiten-Reload sofort auf "Angemeldet" um.
+
+### 2. Modul Agenda (Synchronisierter Dual-Kalender)
+* **Kombination aus Monatsgitter und chronologischer Liste:** Ein reines Monatsgitter auf dem Smartphone ist zu klein für lange Veranstaltungstitel, während einer reinen Liste der zeitliche Überblick fehlt. Deshalb teilt das Agenda-Modul den Bildschirm: Oben steht die chronologische Liste der anstehenden Aktivitäten, unten der Monatskalender mit farbigen Indikator-Punkten. Beide Ansichten teilen sich denselben lokalen Daten-State aus internen Hochschul-Events und importierten **Google Classroom** Abgabefristen.
+
+### 3. Modul Web-Admin (Das Redaktions-Cockpit für Marketing)
+Im Desktop-Portal (`/dashboard/`) übersetzt die Benutzeroberfläche die Sicherheits- und Datenmodellregeln des Backends direkt in sichtbare Formularlogik:
 
 ```javascript
-async function fetchWithAuth(endpoint, options = {}) {
-  const token = localStorage.getItem("upa_access_token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+// Formular-Zustandssteuerung im vereinheitlichten Editor (web-admin)
+function syncEditorState(postData, formElements) {
+  // Regel 1: Pflicht-Ablaufdatum bei "Oben anheften" (is_pinned)
+  if (formElements.isPinnedCheckbox.checked) {
+    formElements.expiresAtInput.required = true;
+    formElements.expiresAtContainer.classList.remove("hidden");
+  } else {
+    formElements.expiresAtInput.required = false;
   }
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("upa_access_token");
-    window.location.href = "/dashboard/login";
-    throw new Error("Sitzung abgelaufen");
-  }
-
-  return response.json();
+  // Regel 2: Read-Only-Schutz für synchronisierte Instagram-Beiträge
+  const isInstagram = postData && postData.post_type === "INSTAGRAM";
+  formElements.titleInput.readOnly = isInstagram;
+  formElements.contentInput.readOnly = isInstagram;
+  formElements.mediaUploadInput.disabled = isInstagram;
 }
 ```
 
-### Dynamische UI-Transformation ohne Reload
-Sobald die Rohdaten als JSON eintreffen, transformiert JavaScript die Datenstrukturen in HTML-Elemente und fügt sie in das DOM ein:
-
-```javascript
-async function renderPublicacionesFeed() {
-  const container = document.getElementById("feed-container");
-  container.innerHTML = '<div class="spinner">Lade Inhalte...</div>';
-
-  try {
-    const publications = await fetchWithAuth("/api/v1/publications");
-    container.innerHTML = "";
-
-    publications.forEach((item) => {
-      const card = document.createElement("article");
-      card.className = "post-card";
-      card.innerHTML = `
-        <h3>${escapeHtml(item.title)}</h3>
-        <p class="meta">${new Date(item.created_at).toLocaleDateString()}</p>
-        <p>${escapeHtml(item.content)}</p>
-      `;
-      container.appendChild(card);
-    });
-  } catch (err) {
-    container.innerHTML = `<p class="error">Fehler beim Laden: ${err.message}</p>`;
-  }
-}
-```
-
-Dieser Ablauf garantiert eine extrem flüssige Benutzeroberfläche (Single Page Application): Der Anwender bleibt zu jedem Zeitpunkt im selben Kontext, während Ladeindikatoren, Optimistic UI Updates und selektive Teilbereichsaktualisierungen für sofortiges Feedback sorgen.
+* **Warum erzwingt die Checkbox "Oben anheften" sofort ein Ablaufdatum?** Sobald ein Redakteur `is_pinned` aktiviert, blendet das Formular das Pflichtfeld `expires_at` ein. So versteht der Redakteur bereits bei der Eingabe, dass kein Banner dauerhaft ohne Verfallsdatum den Campus-Feed blockieren darf.
+* **Warum sind Text und Medien bei Instagram-Beiträgen im Editor ausgegraut (`Read-Only`)?** Beiträge mit `post_type === "INSTAGRAM"` stammen aus dem automatischen Hintergrund-Sync. Würde das Marketing-Team den Text im Web-Admin umschreiben, würde der nächste Synchronisationslauf die Änderung wieder mit dem Originaltext von Instagram überschreiben. Der Editor sperrt daher die Originalfelder visuell und erlaubt nur interne Ergänzungen wie das Anheften.
+* **Warum nutzt die Gruppen-Auswahl eine flache alphabetische Liste mit Sofort-Filter?** An einer Universität existieren Dutzende Google-Workspace-Gruppen (`@example-campus.edu`) für Studiengänge und Jahrgänge. Verschachtelte Baum-Menüs kosten im Redaktionsalltag unnötige Klicks. Eine flache, alphabetisch sortierte Liste mit verzögerungsfreiem Suchfeld (`Instant Filter`) erlaubt die Zielgruppenauswahl in zwei Sekunden.
+* **Warum sind in der Rollen-Matrix alle Berechtigungs-Checkboxen standardmäßig leer?** Nach dem Sicherheitsprinzip minimaler Rechte (*Least Privilege*) darf kein neuer Account versehentlich mit Administratorrechten angelegt werden. Jede Berechtigung muss bewusst einzeln angehakt werden, und Entwickler-Schnellzugänge sind auf dem Login-Bildschirm vollständig entfernt.
 
 ---
 
 ## Fazit
 
-1. **Wirtschaftlichkeit durch PWAs:** Der Verzicht auf plattformspezifische App-Store-Builds zugunsten einer standardisierten Progressive Web App halbiert Wartungskosten, garantiert sofortige Auslieferung neuer Releases und befreit von restriktiven Store-Regeln.
-2. **Effizienz durch Schichtentrennung:** Ein schlanker Nginx-Container liefert ausschließlich statische Assets aus. Das entlastet die Server-Infrastruktur drastisch, da teure Rendering-Arbeitsschritte auf die JavaScript-Engine des Browsers ausgelagert werden.
-3. **Resilienz durch Service Worker und APIs:** Gecachte App-Shells in Verbindung mit entkoppelten REST-APIs ermöglichen Ladezeiten im Millisekundenbereich und bieten verlässliche Offline-Funktionen in anspruchsvollen Campus-Netzen.
+1. **Entkopplung von App Shell und Daten:** Weil Nginx nur das statische Grundgerüst ausliefert und der Client ausschließlich kompakte JSON-Payloads über `/api/` nachlädt, reagiert die Oberfläche ohne Seiten-Reloads in Millisekunden.
+2. **Offline-Fähigkeit durch Dual-Persistenz:** Über lokale Zwischenspeicher (Service Worker Cache im Web, SQLite/Room unter Android) bleiben Stundenpläne, Fristen und Nachrichten auch in Hörsälen ohne stabiles WLAN jederzeit abrufbar.
+3. **Pflichtenheft-Regeln direkt im UI-State verankert:** Vom verpflichtenden Ablaufdatum bei angehefteten Bannern über den Read-Only-Schutz für Instagram-Posts bis zur leeren Checkbox-Vorauswahl in der Rollen-Matrix führt die Oberfläche den Nutzer exakt entlang der Systemarchitektur.
