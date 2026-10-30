@@ -1,8 +1,8 @@
 ---
-title: "UPA Campus App (Kapitel 3): Sicheres Netzwerk mit NetBird"
+title: "UPA Campus App (Kapitel 3): Netzwerkgrenze, NetBird und Reverse Proxy"
 date: 2026-10-30T16:20:00Z
-description: "Zero-Trust Ingress und Single-Origin Routing: Wie die UPA Campus App WireGuard-Mesh-Tunnel und Nginx-Reverse-Proxies kombiniert, um CORS-Probleme, offene Ports und ungeschützte Uploads zu eliminieren."
-summary: "Wie verbindet man interne Server ohne Portweiterleitung sicher mit der Außenwelt? Kapitel 3 erklärt NetBird WireGuard Mesh, Single-Origin Reverse Proxies und den Schutz des Medien-Uploads."
+description: "Wie wird ein Campus-Server ohne offene Router-Ports weltweit sicher erreichbar? Kapitel 3 erklärt ausgehende WireGuard-Tunnel mit NetBird, Loopback-Isolation und Single-Origin-Routing mit Nginx."
+summary: "Warum scheitern klassische Portfreigaben an Universitäten? Kapitel 3 zeigt, wie NetBird WireGuard und Nginx eine sichere Single-Origin-Architektur ohne offene Firewall-Ports schaffen."
 tags: ["Netzwerk", "NetBird", "Nginx", "Softwarearchitektur", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -13,54 +13,63 @@ mermaid: true
 draft: false
 series: "upa-campus-app"
 series_part: 3
-series_part_title: "Sicheres Netzwerk mit NetBird"
+series_part_title: "Netzwerkgrenze, NetBird und Reverse Proxy"
 hiddenInList: true
 ---
 
-Klassische Serverbereitstellungen scheitern in Universitäts- und Unternehmensnetzwerken regelmäßig an zwei Hürden: Direkte Portfreigaben im Router setzen interne Dienste ungeschützt automatisierten Angriffen aus, während Campus-Firewalls und Carrier-Grade NAT (CGNAT) eingehende Verbindungen von außen blockieren. Die UPA Campus App löst dieses Dilemma durch die Kombination eines lokalen Nginx-Reverse-Proxies mit einem verschlüsselten NetBird-WireGuard-Tunnel (Architekturentscheidung 3.4). Dieses dritte Kapitel vermittelt das mentale Modell moderner Ingress-Architekturen: warum Webanwendungen alle Dienste unter einer einzigen Domain (Single Origin) bündeln und wie ein Server ohne einen einzigen offenen Router-Port weltweit sicher erreichbar wird.
+Wie macht man einen lokalen Campus-Server für Smartphones und Browser erreichbar, ohne in der Universitäts-Firewall eingehende Ports zu öffnen oder sich im Browser in CORS-Fehlern zu verfangen? Durch die Kombination eines ausgehenden WireGuard-Mesh-Tunnels (NetBird) mit einem lokalen Nginx-Reverse-Proxy, der sämtliche Anwendungsdienste unter einer einzigen Adresse (Single Origin) zusammenführt. Dieses dritte Kapitel zeigt den Weg eines Datenpakets aus dem öffentlichen Internet bis in das interne Container-Netzwerk.
 
 ---
 
-## Warum klassische Portfreigaben in der Praxis scheitern
+## Warum klassische Portfreigaben in Hochschulnetzen scheitern
 
-Der traditionelle Weg, einen lokalen Webserver im Internet bereitzustellen, führt über eine Portweiterleitung (Port Forwarding) im Router:
+In vielen Einsteiger-Tutorials wird empfohlen, im Router eine Portweiterleitung (Port Forwarding) für Port 80 und 443 auf den lokalen Server einzurichten. Im realen Betrieb einer Universität scheitert dieses Vorgehen aus drei Gründen:
+
+1. **Permanente Scans im öffentlichen Internet:** Automatisierte Suchmaschinen und Botnetze prüfen den gesamten IPv4-Adressraum im Minutentakt auf offene Ports. Jeder direkt geöffnete Dienst ist sofort automatisierten Angriffsversuchen ausgesetzt.
+2. **Kein Zugriff auf die zentrale Campus-Firewall:** Projektteams erhalten aus guten Sicherheitsgründen keinen administrativen Zugriff auf die Haupt-Router des Universitätsrechenzentrums. Zudem nutzen viele Internetanbieter Carrier-Grade NAT (CGNAT), bei dem sich zahlreiche Anschlüsse eine einzige öffentliche IP-Adresse teilen und eingehende Verbindungen technisch blockiert sind.
+3. **Das Docker-Firewall-Risiko auf Linux-Servern:** Selbst wenn auf einem Server eine lokale Firewall wie UFW aktiv ist, überschreibt Docker bei einer normalen Port-Freigabe (`8085:80`) standardmäßig die `iptables`-Ketten des Linux-Kernels und öffnet den Port ungewollt für das gesamte lokale Netzwerk.
+
+---
+
+## Verbindungsrichtung umkehren: Ausgehender WireGuard-Tunnel und Loopback-Schutz
+
+Um diese Risiken an der Wurzel zu beseitigen, dreht die UPA Campus App die Richtung des Verbindungsaufbaus um. Der Server öffnet keinen einzigen eingehenden Port nach außen, sondern baut von innen heraus einen verschlüsselten **NetBird**-Tunnel auf Basis des **WireGuard**-Protokolls zum Ingress-Endpunkt (`campus.example-tunnel.internal`) auf:
 
 ```mermaid
 flowchart LR
-    Attacker["Angreifer & Botnetze (Öffentliches Internet)"] -->|Automatisierte Port-Scans| Router["Lokaler Router / Firewall"]
-    Router -->|Port Forwarding 80 / 443 / 5432| Server["Interner Server"]
-    Server --> Exploit["Direkter Zugriff auf API & Datenbank"]
+    subgraph Internet["Öffentliches Netz"]
+        Phone["Smartphone / Browser"]
+        Ingress["NetBird Ingress Proxy\n(campus.example-tunnel.internal)"]
+    end
+    subgraph CampusHost["Interner Campus-Server (0 offene Router-Ports)"]
+        Daemon["NetBird Daemon\n(WireGuard-Endpunkt)"]
+        Loopback["Loopback-Schnittstelle\n127.0.0.1:8085"]
+        subgraph DockerNet["Privates Docker-Bridge-Netzwerk"]
+            Nginx["campus-frontend (Nginx)"]
+            FastAPI["campus-backend (FastAPI :8000)"]
+            PG[("campus-postgres (PostgreSQL :5432)")]
+        end
+    end
+
+    Phone -->|HTTPS 443| Ingress
+    Daemon -->|Ausgehender Tunnel-Aufbau| Ingress
+    Ingress -.->|Verschlüsselter Datenstrom| Daemon
+    Daemon --> Loopback --> Nginx
+    Nginx -->|Internes DNS| FastAPI --> PG
 ```
 
-Für produktive Campus- und Enterprise-Systeme ist dieser Ansatz aus drei Gründen ungeeignet:
-1. **Automatisierte Angriffswellen:** Suchmaschinen wie Shodan oder Censys scannen den gesamten öffentlichen IPv4-Adressraum kontinuierlich. Sobald ein Port am Router geöffnet wird, registrieren Botnetze den Dienst innerhalb weniger Minuten und starten automatisierte Brute-Force-Angriffe sowie Exploits gegen bekannte Schwachstellen (CVEs).
-2. **Gefahr menschlicher Fehlkonfiguration:** Wird bei einem schnellen Testlauf versehentlich der Datenbankport (`5432`) oder ein interner Entwicklungsport ohne Authentifizierung freigegeben, liegen schützenswerte Studierendendaten offen im Netz.
-3. **Fehlende Infrastruktur-Hoheit an Universitäten:** In Hochschulnetzen haben Projektteams keinen Zugriff auf die zentralen Firewall-Regeln des Rechenzentrums. Zudem teilen sich bei vielen Internetanbietern über Carrier-Grade NAT (CGNAT) Hunderte Anschlüsse eine gemeinsame öffentliche IPv4-Adresse, wodurch eingehende Portweiterleitungen technisch unmöglich sind.
-
-Moderne Systemarchitekturen kehren die Verbindungsrichtung deshalb um: Statt Ports von außen nach innen zu öffnen, baut der Server von innen nach außen einen verschlüsselten Tunnel auf.
+Drei Sicherheitsstufen greifen hier nahtlos ineinander:
+* **Ausgehender Handshake:** Weil der lokale NetBird-Daemon die Verbindung von innen nach außen initiiert, passiert der Tunnel jede Campus-Firewall und jedes CGNAT ohne Portweiterleitung. Gleichzeitig übernimmt der Ingress-Knoten die Bereitstellung gültiger HTTPS-Zertifikate, die für Google OAuth 2.0 und Progressive Web Apps technisch vorgeschrieben sind.
+* **Strikte Loopback-Bindung (`127.0.0.1:8085:80`):** Durch das Voranstellen von `127.0.0.1:` lauscht der Nginx-Container gezielt auf der serverinternen Loopback-Schnittstelle. Nur der lokale NetBird-Daemon auf demselben Rechner kann Pakete dorthin übergeben.
+* **Unsichtbare Backend- und Datenbank-Ports:** Weder FastAPI (Port 8000) noch PostgreSQL (Port 5432) besitzen einen `ports`-Eintrag auf dem Host. Sie sind nur über das interne Docker-DNS (`backend:8000` und `postgres:5432`) erreichbar.
 
 ---
 
-## Das Prinzip Reverse Proxy: Warum eine einzige Adresse (Single Origin) alles vereint
+## Das Single-Origin-Prinzip: Wie Nginx das Pflichtenheft zusammenhält
 
-Wer als angehender Wirtschaftsinformatiker oder Vibe-Coder eine erste Webanwendung lokal entwickelt, startet das Frontend oft auf `localhost:3000` und das Backend auf `localhost:8000`. Im echten Internet führt diese Trennung sofort zu Problemen: Browser blockieren Anfragen zwischen unterschiedlichen Ports oder Domains aus Sicherheitsgründen über die **Same-Origin-Policy (CORS)**, und Nutzer müssten sich komplexe Portnummern merken.
+Wer bei der lokalen Webentwicklung die Oberfläche auf Port `3000` und die API auf Port `8000` startet, stößt im Browser unweigerlich auf die **Same-Origin-Policy**: Aus Sicherheitsgründen blockieren Browser standardmäßig Datenabrufe zwischen unterschiedlichen Ports oder Domains (CORS-Fehler).
 
-Ein **Reverse Proxy** (Nginx) löst dieses Problem, indem er als zentrales Empfangstor vor allen Containern steht und die gesamte Plattform unter einer einzigen Domain zusammenführt:
-
-```mermaid
-flowchart TD
-    Client["Client-Anfrage (HTTPS)"] --> Nginx["Nginx Reverse Proxy (Port 80 intern)"]
-    subgraph Container_Netzwerk["Isoliertes Docker-Bridge-Netzwerk"]
-        Nginx -->|Route / & /app/| WebApp["Campus Web-App & Desktop QR-Landingpage"]
-        Nginx -->|Route /dashboard/| AdminUI["Web-Admin Redaktionsportal"]
-        Nginx -->|Route /api/| FastAPI["FastAPI Backend (backend:8000)"]
-        Nginx -->|Route /uploads/| Uploads["Medien-Volume (Bilder, MP4/WEBM, PDF)"]
-    end
-```
-
-### Wie die Routing-Tabelle in Nginx das Pflichtenheft abbildet
-
-Ein Blick in die `nginx.conf` der UPA Campus App zeigt, wie jede URL-Route eine konkrete Aufgabe aus dem Pflichtenheft erfüllt:
+Im Produktivbetrieb löst **Nginx** als **Reverse Proxy** dieses Problem. Für das Smartphone existiert nur noch eine einzige Webadresse, hinter der Nginx den Verkehr anhand des URL-Pfads lautlos auf die richtige Ressource verteilt:
 
 ```nginx
 server {
@@ -68,7 +77,7 @@ server {
     server_name localhost;
     client_max_body_size 25M;
 
-    # 1. API-Verkehr an den FastAPI-Container weiterleiten
+    # 1. REST-API-Aufrufe an den FastAPI-Container weiterleiten
     location /api/ {
         proxy_pass http://backend:8000/api/;
         proxy_set_header Host $host;
@@ -76,20 +85,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 2. Hochgeladene Medien (Plakate, Videos, PDFs) ausliefern
+    # 2. Veranstaltungsplakate, Videos und PDFs mit Browser-Caching ausliefern
     location /uploads/ {
         proxy_pass http://backend:8000/uploads/;
         expires 7d;
         add_header Cache-Control "public, max-age=604800, immutable";
     }
 
-    # 3. Web-Admin Redaktionsportal für das Marketing-Team
+    # 3. Redaktions-Cockpit für das Marketing-Team
     location /dashboard/ {
         alias /usr/share/nginx/html/dashboard/;
         try_files $uri $uri/ /dashboard/index.html;
     }
 
-    # 4. Mobile Web-App und Desktop QR-Landingpage
+    # 4. Mobile Campus-App und Desktop-QR-Landingpage
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /app/index.html;
@@ -97,48 +106,14 @@ server {
 }
 ```
 
-Drei architektonische Mechanismen greifen hier ineinander:
-* **Wegfall von CORS-Komplexität durch Single Origin:** Weil Browser sowohl die Benutzeroberfläche (`/dashboard/`), die REST-Schnittstelle (`/api/`) als auch die Veranstaltungsbilder (`/uploads/`) von exakt derselben Adresse laden, gelten alle Aufrufe als *Same-Origin*. Komplexe Preflight-Abfragen entfallen.
-* **Schutz des einheitlichen Medien-Uploads (`client_max_body_size`):** Laut Pflichtenheft unterstützt der Beitrags-Editor im Web-Admin neben Bildern und PDFs auch kurze Veranstaltungsvideos (`MP4` und `WEBM`). Die Direktive `client_max_body_size 25M` erlaubt diese regulären Medien-Uploads, weist aber manipulierte Gigabyte-Pakete bereits an der Netzwerkgrenze mit `HTTP 413 (Content Too Large)` ab, bevor sie den Arbeitsspeicher des Python-Backends belasten.
-* **SPA-Fallback über `try_files`:** Wenn ein Redakteur im Browser direkt die Unterseite `/dashboard/publicaciones` aktualisiert, sucht Nginx nicht nach einer physischen Datei namens `publicaciones`, sondern liefert über `try_files` sauber die `index.html` des Portals aus, damit das JavaScript-Routing die richtige Ansicht öffnet.
-
----
-
-## NetBird Ingress: Zero-Trust-Zugang ohne offene Router-Ports
-
-Wie gelangt die Anfrage vom Smartphone eines Studierenden zum lokalen Nginx-Container, wenn am Universitäts-Router kein einziger Port geöffnet ist? Die Antwort liefert **NetBird** auf Basis des **WireGuard**-Protokolls:
-
-```mermaid
-flowchart LR
-    subgraph PublicNet["Öffentlicher Raum"]
-        Client["Smartphone / Browser"]
-        NetBirdIngress["NetBird Ingress Proxy\n(campus.example-tunnel.internal)"]
-    end
-    subgraph TunnelMechanism["Verschlüsselter WireGuard-Tunnel"]
-        Outbound["Ausgehende Verbindung vom Server\n(0 offene Ports in der Campus-Firewall)"]
-    end
-    subgraph PrivateServer["Interner Campus-Server"]
-        NetBirdDaemon["Lokaler NetBird Daemon"]
-        Nginx["Nginx Reverse Proxy\n(127.0.0.1:8085)"]
-        AppServices["FastAPI & PostgreSQL\n(Isoliertes Docker-Netzwerk)"]
-    end
-
-    Client -->|HTTPS 443| NetBirdIngress
-    NetBirdDaemon -->|Ausgehender Handshake| NetBirdIngress
-    NetBirdIngress -.->|Ende-zu-Ende verschlüsselt| Outbound
-    Outbound --> NetBirdDaemon
-    NetBirdDaemon -->|Loopback 127.0.0.1:8085| Nginx
-    Nginx --> AppServices
-```
-
-1. **Verbindungsaufbau von innen nach außen:** Der NetBird-Dienst auf dem Campus-Server baut selbstständig eine ausgehende, verschlüsselte WireGuard-Verbindung zum Ingress-Knoten (`campus.example-tunnel.internal`) auf. Da Firewalls ausgehende Verbindungen interner Server zulassen, ist keinerlei Portfreigabe im Router erforderlich.
-2. **Automatische TLS-Terminierung:** Der Ingress-Knoten stellt gültige HTTPS-Zertifikate bereit (erforderlich für Google OAuth 2.0 und Service Worker in PWAs) und leitet den Datenverkehr Ende-zu-Ende verschlüsselt durch den WireGuard-Tunnel zum Server.
-3. **Nahtlose Übergabe an Loopback (`127.0.0.1:8085`):** Auf dem Server nimmt der NetBird-Daemon die Pakete aus dem Tunnel entgegen und übergibt sie lokal an `127.0.0.1:8085`. Wie in Kapitel 2 gezeigt, lauscht der Nginx-Container ausschließlich auf dieser internen Loopback-Adresse und ist von außen über das lokale Netzwerk unangreifbar.
+Jeder Block dieser Konfiguration erfüllt eine direkte Anforderung des Pflichtenhefts:
+1. **Kein CORS-Overhead (`/api/` und `/uploads/`):** Weil Oberfläche, JSON-Daten und Bilder für den Browser von derselben Adresse stammen, entfallen fehleranfällige Cross-Origin-Sonderregeln. Zusätzlich sorgt der `Cache-Control`-Header unter `/uploads/` dafür, dass einmal geladene Veranstaltungsplakate sieben Tage lang direkt aus dem Gerätespeicher gelesen werden.
+2. **Schutzschild für den Medien-Upload (`client_max_body_size 25M`):** Das Pflichtenheft erlaubt im Beitrags-Editor das Hochladen von Bildern, PDF-Dokumenten und kurzen Veranstaltungsvideos (`MP4` und `WEBM`). Die Obergrenze von 25 Megabyte lässt reguläre Campus-Medien problemlos passieren, blockiert aber übergroße Dateien bereits an der Netzwerkgrenze mit `HTTP 413 (Content Too Large)`, noch bevor sie den Arbeitsspeicher des Python-Backends erreichen.
+3. **Unterstützung für Client-Routing (`try_files`):** Wenn ein Redakteur im Browser direkt einen tiefen Link wie `/dashboard/publicaciones` neu lädt, sucht Nginx nicht vergeblich nach einem gleichnamigen Dateiordner, sondern liefert über `try_files` die zentrale `index.html` aus, damit die Webanwendung die gewünschte Ansicht aufbaut.
 
 ---
 
 ## Fazit
 
-1. **Ausgehende Tunnel statt offener Ports:** Durch NetBird und WireGuard benötigt der Server keine Portfreigaben im Router und bleibt für automatisierte Port-Scanner aus dem Internet unsichtbar.
-2. **Single-Origin-Architektur durch Nginx:** Der Reverse Proxy vereint Studierenden-App, Web-Admin-Portal, REST-API (`/api/`) und Medienspeicher (`/uploads/`) unter einer einzigen Adresse, verhindert CORS-Fehler und schützt das Backend vor überdimensionierten Upload-Paketen.
-3. **Direkte Unterstützung des Pflichtenhefts:** Sicheres HTTPS für den Google-Login (`@example-campus.edu`), schnelles Caching für Veranstaltungsplakate und kontrollierte Upload-Limits für Videos entstehen direkt in dieser Netzwerkschicht.
+1. **Erreichbarkeit ohne offene Firewall-Ports:** Über den ausgehenden NetBird-WireGuard-Tunnel und die lokale Bindung an `127.0.0.1:8085` bleibt der Campus-Server für Port-Scanner aus dem Internet unsichtbar und funktioniert selbst hinter restriktiven Hochschul-Firewalls.
+2. **Eine Adresse für alle Module:** Als Single-Origin Reverse Proxy vereint Nginx die mobile Studierenden-App, das Redaktions-Cockpit, die FastAPI-Schnittstelle und die Medienauslieferung unter einer gemeinsamen Domain und fängt zu große Datei-Uploads bereits vor dem Backend ab.

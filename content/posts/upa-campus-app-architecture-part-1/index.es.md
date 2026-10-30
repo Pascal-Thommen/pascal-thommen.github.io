@@ -1,10 +1,10 @@
 ---
-title: "UPA Campus App (Capítulo 1): Panorama General y Arquitectura del Sistema"
+title: "UPA Campus App (Capítulo 1): Modelo Mental y Visión General"
 date: 2026-10-30T16:00:00Z
-description: "¿Cómo funciona una aplicación web moderna desde cero? El capítulo 1 explica la arquitectura en tres capas de la UPA Campus App y muestra cómo la especificación funcional nace directamente del diseño del sistema."
-summary: "¿Cómo construir una plataforma universitaria en producción con infraestructura ligera? El capítulo 1 conecta la arquitectura universal en tres capas con los módulos concretos de la especificación funcional."
-tags: ["Arquitectura de Software", "Docker", "FastAPI", "PostgreSQL", "Sistemas Empresariales"]
-categories: ["Arquitectura", "Sistemas Empresariales"]
+description: "¿Cómo funciona por dentro una aplicación web moderna? El Capítulo 1 explica el modelo universal en capas y muestra cómo encajan los cuatro módulos de la especificación UPA."
+summary: "¿Por qué las aplicaciones modernas separan presentación, enrutamiento, lógica y datos? El Capítulo 1 presenta el modelo mental base y traduce el pliego funcional en arquitectura."
+tags: ["Arquitectura de Software", "Diseño de Sistemas", "FastAPI", "PostgreSQL", "Enterprise Systems"]
+categories: ["Arquitectura", "Enterprise Systems"]
 author: "Pascal Thommen"
 hidemeta: false
 ShowReadingTime: false
@@ -13,162 +13,85 @@ mermaid: true
 draft: false
 series: "upa-campus-app"
 series_part: 1
-series_part_title: "Panorama General y Arquitectura del Sistema"
+series_part_title: "Modelo Mental y Visión General"
 hiddenInList: true
 ---
 
-Toda aplicación web sólida divide la presentación visual, la lógica de negocio y la persistencia de datos en capas independientes, porque un único proceso monolítico se vuelve imposible de asegurar y mantener a medida que crece el sistema. La UPA Campus App materializa este principio mediante tres contenedores Docker aislados detrás de un túnel de ingreso cifrado con NetBird. Este primer capítulo explica cómo funciona una arquitectura web moderna desde sus cimientos y por qué cada módulo de la especificación funcional se desprende directamente de esta división técnica del trabajo.
+¿Cómo pasa una lista de requerimientos funcionales a convertirse en una aplicación web estable? Separando de forma estricta la visualización, la distribución del tráfico, las reglas de negocio y el almacenamiento de datos, en lugar de concentrar todas las tareas en un único programa monolítico. Este primer capítulo presenta el modelo mental universal de los sistemas web modernos y explica por qué los cuatro módulos funcionales de la UPA Campus App están definidos así en su especificación.
 
 ---
 
-## La Anatomía de una Aplicación Web Moderna
+## Por Qué un Solo Toque en Pantalla Recorre Cuatro Estaciones
 
-Cuando un estudiante revisa su teléfono por la mañana para comprobar si una tormenta suspendió las clases presenciales o cuándo vence la próxima entrega en Google Classroom, la aplicación se percibe como un solo bloque. Sin embargo, detrás de cada toque ocurre un relevo coordinado entre cuatro componentes especializados:
+Cuando un estudiante revisa por la mañana en su teléfono si una clase cambió de aula o se inscribe con un toque a un taller universitario, la aplicación parece una sola pieza. Bajo la superficie, sin embargo, ocurre un relevo coordinado entre cuatro estaciones especializadas:
 
 ```mermaid
 flowchart LR
-    Client["Cliente (App Móvil / Web-Admin)"] -->|HTTPS 443| NetBird["Túnel Ingress NetBird"]
-    NetBird -->|127.0.0.1:8085| Nginx["Contenedor Frontend (Nginx)"]
-    Nginx -->|Recursos Estáticos y App Shell| Client
-    Nginx -->|Proxy Inverso /api/ Puerto 8000| Backend["Contenedor Backend (FastAPI)"]
-    Backend -->|SQL Puerto 5432| DB[("Contenedor PostgreSQL")]
-    DB -->|Tablas Relacionales| VolDB[("Volumen: postgres_data")]
-    Backend -->|Archivos Multimedia| VolMedia[("Volumen: uploads_data")]
-    Nginx -->|Proxy Inverso /uploads/| VolMedia
+    Client["1. Dispositivo Cliente (Móvil / Navegador)\nPresentación y Estado Local"] -->|Petición HTTPS| Gateway["2. Puerta de Entrada (Túnel y Proxy Inverso)\nCifrado y Enrutamiento"]
+    Gateway -->|Desvío Interno| Logic["3. Lógica de Negocio (API Backend)\nPermisos, Validación e Integraciones"]
+    Logic -->|Consulta Transaccional| Storage[("4. Persistencia (Base de Datos y Archivos)\nFuente de Verdad Duradera")]
 ```
 
-Para visualizar el flujo, resulta útil la analogía de un restaurante universitario bien organizado:
-* **Frontend (Nginx y Navegador / App):** El salón comedor y el menú. Aquí el estudiante consulta las opciones y solicita lo que necesita, pero en las mesas no se cocina ni se guarda la contabilidad.
-* **Proxy Inverso (Enrutamiento Nginx):** El recepcionista en la puerta principal. Recibe cada solicitud, entrega folletos impresos (archivos estáticos e imágenes) al instante y dirige los pedidos de cocina hacia el interior.
-* **Backend (FastAPI):** La cocina. Verifica que la persona tenga permiso para pedir (autenticación y control de roles), comprueba que la comanda esté completa (validación de esquemas) y prepara el plato aplicando las recetas oficiales (lógica de negocio).
-* **Base de Datos (PostgreSQL y Volúmenes):** La cámara frigorífica y el libro contable. Aquí se resguardan todos los insumos y registros de forma duradera y cerrada al público. Solo la cocina tiene llave para entrar.
+¿Por qué el teléfono móvil no se conecta directamente a la base de datos? La analogía de un restaurante bien organizado aclara de inmediato la frontera arquitectónica:
+
+* **El Dispositivo Cliente (Navegador y App Móvil) es el comedor:** Aquí el comensal consulta el menú y realiza su pedido. En el comedor no se cocina ni se maneja la caja registradora, porque cualquier visitante puede entrar y alterar lo que tiene en su mesa.
+* **La Puerta de Entrada (Ingress y Proxy Inverso) es la recepción:** Verifica quién llega, entrega folletos informativos (archivos estáticos) al instante y canaliza los pedidos reales hacia la cocina.
+* **La Lógica de Negocio (Backend) es la cocina:** Comprueba si el cliente tiene autorización para pedir, revisa que la orden esté completa y prepara el plato siguiendo recetas estrictas.
+* **La Persistencia (Base de Datos y Almacenamiento Multimedia) es la cámara frigorífica y el libro contable bajo llave:** Ningún visitante entra al almacén. Solo la cocina tiene acceso, garantizando que el inventario y los registros mantengan su integridad.
 
 ---
 
-## Por Qué Cada Capa Cumple una Función Exclusiva
+## Las Cuatro Preguntas Clave para Informática Empresarial y Vibe-Coding
 
-1. **Túnel Ingress NetBird:** Crea una red mallada WireGuard cifrada de extremo a extremo. El servidor no abre puertos públicos hacia Internet porque todo el tráfico ingresa únicamente por túneles autenticados punto a punto hacia la interfaz local loopback (`127.0.0.1:8085`).
-2. **Contenedor Frontend (Nginx):** Sirve tanto la pantalla de escritorio minimalista (con un único código QR de instalación móvil y capturas de vista previa) como el portal administrativo Web-Admin para marketing y la PWA móvil. Al mismo tiempo, Nginx actúa como proxy inverso: redirige las llamadas `/api/` hacia el backend y las rutas `/uploads/` hacia el volumen de archivos multimedia.
-3. **Contenedor Backend (FastAPI):** Procesa peticiones REST de forma asíncrona, valida cada entrada con Pydantic y ejecuta las reglas de la especificación funcional. Esto abarca el acceso obligatorio con Google OAuth para cuentas institucionales (`@example-campus.edu`), la sincronización con Google Classroom API y Google Workspace Directory, y la importación automática del feed oficial de Instagram.
-4. **Contenedor de Base de Datos (PostgreSQL):** Almacena registros relacionales como perfiles de usuario, grupos de audiencia, publicaciones unificadas, inscripciones en 1 clic (`EventRegistration`), lecturas únicas (`PostView`) y la bitácora inmutable de auditoría (`AdminAuditLog`) con garantías transaccionales ACID completas.
+Al desarrollar software con asistentes de inteligencia artificial o diseñar sistemas en informática empresarial, es común caer en el error de pensar únicamente desde la apariencia de la pantalla ("Aquí falta un botón"). Una arquitectura sólida surge cuando cada requisito funcional pasa por cuatro preguntas estructurales:
+
+1. **¿Dónde reside la fuente única de verdad (Single Source of Truth)?** ¿Cada dato se administra en un solo lugar central, o existen listas duplicadas que entrarán en conflicto a los pocos días?
+2. **¿Qué información es pública y cuál requiere identidad institucional?** ¿Qué contenido puede verse sin iniciar sesión y en qué punto entra en vigor la verificación de cuenta universitaria?
+3. **¿Qué sistemas externos ya poseen los datos?** ¿Qué información ya se gestiona en la universidad (como entregas en Google Classroom o publicaciones en Instagram) y debe sincronizarse automáticamente en lugar de volver a tipearse?
+4. **¿Cómo responde el sistema ante fallos cotidianos?** ¿Qué ocurre si se pierde la señal Wi-Fi en el aula o si un usuario pulsa dos veces seguidas el botón de inscripción?
 
 ---
 
-## Del Diagrama de Arquitectura a la Especificación Funcional: El Modelo Mental Universal
+## El Pliego Funcional de la UPA como Sistema Integrado
 
-En la ingeniería en informática empresarial y en el desarrollo moderno asistido por inteligencia artificial (vibe-coding), el verdadero valor no reside en memorizar la sintaxis de un bucle o márgenes CSS, sino en saber traducir cada requisito de negocio del pliego funcional en cuatro bloques arquitectónicos:
-1. **Frontera del Sistema e Ingreso (Ingress):** ¿Quién puede acceder a la plataforma y a través de qué canal de red cifrado?
-2. **Estado del Cliente y Presentación:** ¿Qué datos conserva el dispositivo localmente para responder sin conexión y qué acciones exigen sincronización con el servidor?
-3. **Contrato de Interfaz y Lógica de Dominio:** ¿Qué reglas valida obligatoriamente la API antes de modificar datos o consultar sistemas externos (como Google Classroom o Instagram)?
-4. **Persistencia Relacional:** ¿En qué tablas y bajo qué restricciones de integridad (como bloqueos contra inscripciones duplicadas) se resguarda la información de forma duradera?
-
-Al aplicar este modelo mental a la UPA Campus App, se comprende de inmediato por qué los cuatro módulos principales de la especificación funcional fueron diseñados exactamente de esa manera:
+Al aplicar estas cuatro preguntas a la realidad operativa de la Universidad Paraguayo Alemana (UPA), los cuatro módulos de la especificación (*Inicio*, *Agenda*, *Perfil* y *Web-Admin*) encajan con precisión:
 
 ```mermaid
 flowchart TD
-    subgraph Spec["Módulos de la Especificación Funcional"]
-        M1["Módulo Inicio (Feed): Avisos de Emergencia, Noticias, RSVP en 1 Clic e Instagram"]
-        M2["Módulo Agenda: Lista Cronológica, Calendario Mensual y Classroom"]
-        M3["Módulo Perfil: Identidad Universitaria (@example-campus.edu) y Almacenamiento Offline"]
-        M4["Módulo Web-Admin: Editor Unificado, Grupos Alfabéticos y Matriz de Roles"]
+    subgraph Modulos["Los Cuatro Módulos de la Especificación"]
+        M1["Módulo Inicio\nBanners de Emergencia, Feed Campus, Instagram y RSVP en 1 Clic"]
+        M2["Módulo Agenda\nLista Cronológica, Calendario Mensual y Entregas de Classroom"]
+        M3["Módulo Perfil\nIdentidad Universitaria (@example-campus.edu) y Modo Offline"]
+        M4["Módulo Web-Admin\nCabina Editorial, Filtro de Grupos y Matriz de Roles"]
     end
-    subgraph Arch["Implementación Arquitectónica en las Capas"]
-        A1["Modelo Post Unificado en PostgreSQL + Bloqueo de Solo Lectura para Sync de Instagram"]
-        A2["Fuente Dual: Eventos Internos en PostgreSQL + Entregas en Vivo vía Google Classroom OAuth"]
-        A3["Validación de Dominio Google OAuth 2.0 en Backend + Cache Storage / Room en Cliente"]
-        A4["Caché de Google Directory API en Backend + Roles bajo Privilegio Mínimo sin Preselección"]
+    subgraph Nucleo["Núcleo Compartido del Sistema"]
+        Core1["Motor Unificado de Publicaciones\nUn Registro Alimenta Tarjeta de Feed, Vista Completa y Calendario"]
+        Core2["Sincronización Externa\nGoogle Classroom (Tareas), Google Directory (Grupos) e Instagram"]
     end
-    M1 --> A1
-    M2 --> A2
-    M3 --> A3
-    M4 --> A4
+    M1 --> Core1
+    M2 --> Core1
+    M4 --> Core1
+    M1 --> Core2
+    M2 --> Core2
+    M3 --> Core2
+    M4 --> Core2
 ```
 
-* **¿Por qué existe un modelo unificado de publicaciones en lugar de tablas separadas para noticias y eventos?** En la vida universitaria, un mismo anuncio suele ser simultáneamente una noticia en el feed y un evento en el calendario (por ejemplo, una conferencia magistral con texto explicativo, afiche, auditorio, horario e inscripción RSVP en 1 clic). Como el backend alimenta ambas vistas desde la misma tabla relacional (`posts` mediante `/api/publications`), existe una verdadera *Fuente Única de Verdad (Single Source of Truth)*: si marketing cambia el aula de una charla, la tarjeta del feed, el modal a pantalla completa y el punto en el calendario mensual se actualizan en el mismo instante.
-* **¿Por qué el feed distingue entre modo público y modo autenticado?** Antes de iniciar sesión, el endpoint `/api/v1/feed` devuelve exclusivamente las publicaciones públicas de Instagram de la universidad. Solo cuando el estudiante envía un token JWT válido tras autenticarse con Google OAuth, el backend entrega noticias internas, eventos segmentados por carrera y banners superiores de emergencia (`EMERGENCY_BANNER`). Así, la pantalla inicial resulta atractiva sin exponer información institucional privada.
-* **¿Por qué el módulo Agenda se conecta directamente a Google Classroom mediante tokens OAuth?** Los docentes ya cargan las fechas límite de tareas y entregas en Google Classroom. Obligar a los profesores a duplicar esos plazos manualmente en el portal del campus provocaría datos desactualizados en pocas semanas. Por ello, el backend resguarda el token OAuth de Classroom al iniciar sesión y combina en tiempo real las entregas académicas oficiales con los eventos propios de la universidad.
+### 1. Módulo Inicio: Separación entre Vitrina Pública y Comunidad Interna
+Los aspirantes y visitantes que abren la aplicación por primera vez deben percibir una vida universitaria activa sin acceder a comunicaciones internas. Por ello, el feed opera en dos niveles: sin iniciar sesión, *Inicio* muestra las publicaciones sincronizadas del canal público de Instagram de la universidad. Al autenticarse con una cuenta institucional, el sistema habilita avisos internos, eventos por carrera con inscripción en 1 clic y banners de emergencia prioritarios (por ejemplo, ante suspensión de clases por tormenta severa).
+
+### 2. Módulo Agenda: Integrar Fuentes Oficiales en Lugar de Duplicar Tareas
+Un calendario estudiantil solo es útil si está completo. Los docentes ya cargan las fechas de exámenes y entregas en **Google Classroom**. Si el sistema exigiera que los profesores registren cada tarea por segunda vez en el portal del campus, la agenda quedaría desactualizada rápidamente. La arquitectura combina de forma automática los eventos institucionales internos con los vencimientos reales de Google Classroom del estudiante autenticado.
+
+### 3. Módulo Perfil: Identidad Verificada y Resiliencia sin Conexión
+El módulo *Perfil* une seguridad y disponibilidad práctica: el inicio de sesión mediante Google OAuth 2.0 admite únicamente correos institucionales verificados (`@example-campus.edu`), mientras que el almacenamiento local en el dispositivo permite consultar horarios, fechas de entrega y noticias previamente cargadas incluso en aulas con baja cobertura móvil.
+
+### 4. Módulo Web-Admin: Una Cabina Editorial Única para Administración
+El equipo de marketing y gestión trabaja desde computadoras de escritorio. En lugar de cargar noticias en un formulario y eventos de calendario en otro distinto, el módulo *Web-Admin* ofrece un editor unificado. Si se modifica el horario o el salón de una conferencia, la tarjeta del feed, el modal de pantalla completa y el calendario mensual se actualizan al instante para todos los grupos destinatarios.
 
 ---
 
-## Conceptos Fundamentales de Infraestructura
+## Conclusiones
 
-<details open>
-<summary>Glosario de conceptos técnicos</summary>
-
-* **Contenedor:** Unidad de ejecución aislada que empaqueta el código de la aplicación junto con todas sus dependencias de sistema. Al compartir el kernel Linux del servidor anfitrión, los contenedores inician en fracciones de segundo y consumen mucha menos memoria RAM que las máquinas virtuales.
-* **Puerto:** Canal numérico lógico que identifica un servicio de red específico (como el puerto 5432 para PostgreSQL o el 8000 para FastAPI). En una arquitectura segura, los puertos internos solo son accesibles dentro de la red privada de contenedores.
-* **Proxy Inverso:** Servidor web perimetral (Nginx) que recibe todas las solicitudes entrantes de los clientes y las distribuye según el prefijo de la ruta (`/api/`, `/uploads/`, `/dashboard/`) hacia el contenedor interno correspondiente.
-* **Volumen:** Directorio persistente en el disco del servidor anfitrión conectado al contenedor para garantizar que las tablas de la base de datos y los archivos subidos sobrevivan a cualquier reinicio o actualización de versión.
-
-</details>
-
----
-
-## Orquestación de Contenedores y Estrategia de Almacenamiento
-
-En un equipo universitario, estudiantes y desarrolladores trabajan sobre distintos sistemas operativos (Windows, macOS, Linux). Sin contenedores, las diferencias en versiones de Python o librerías instaladas generan fallos constantes al desplegar en el servidor. Docker Compose integra los tres servicios de forma declarativa dentro de una red bridge aislada:
-
-```yaml
-# docker-compose.yml (extracto con marcadores neutrales anonimizados)
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: campus-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: app_db
-      POSTGRES_USER: db_user
-      POSTGRES_PASSWORD: secret_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - campus-network
-
-  backend:
-    build: ./backend
-    container_name: campus-backend
-    restart: unless-stopped
-    depends_on:
-      - postgres
-    environment:
-      DATABASE_URL: postgresql://db_user:secret_password@postgres:5432/app_db
-      ALLOWED_EMAIL_DOMAIN: example-campus.edu
-      APP_ENV: production
-    volumes:
-      - uploads_data:/app/uploads
-    networks:
-      - campus-network
-
-  frontend:
-    build:
-      context: .
-      dockerfile: web-admin/Dockerfile
-    container_name: campus-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    ports:
-      - "127.0.0.1:8085:80"
-    networks:
-      - campus-network
-
-networks:
-  campus-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  uploads_data:
-```
-
-Dado que los contenedores son efímeros por diseño y se reconstruyen en cada despliegue, el estado persistente se divide en dos volúmenes con nombre en el host:
-1. **Datos Relacionales (`postgres_data`):** Resguarda tablas, índices y registros transaccionales en `/var/lib/postgresql/data`.
-2. **Archivos Multimedia (`uploads_data`):** Almacena afiches, videos (`MP4`, `WEBM`) y documentos PDF en `/app/uploads`. Los archivos binarios pesados no se guardan como BLOB dentro de PostgreSQL porque saturarían la memoria caché de la base de datos y multiplicarían el peso de las copias de seguridad diarias.
-
----
-
-## Conclusiones Clave
-
-1. **Separación de Responsabilidades frente a Monolitos:** Dividir el sistema en proxy Nginx, backend FastAPI y base de datos PostgreSQL permite actualizar, probar y blindar cada capa de forma independiente.
-2. **La Especificación Funcional como Consecuencia de la Arquitectura:** Reglas como el modelo unificado de publicaciones (`Single Source of Truth`), la sincronización en vivo con Google Classroom y el filtrado autenticado del feed surgen directamente de evitar duplicidad de datos y brechas de seguridad.
-3. **Contenedores sin Estado y Volúmenes Persistentes:** Los contenedores de aplicación pueden reemplazarse en cualquier momento sin riesgo, mientras los registros relacionales y archivos multimedia permanecen protegidos en volúmenes dedicados del servidor.
+1. **Cuatro Capas Definen Responsabilidades Claras:** La división entre dispositivo cliente, puerta de entrada, lógica de negocio y persistencia permite mantener interfaces ágiles mientras las validaciones de seguridad y los datos permanecen resguardados en el servidor.
+2. **La Especificación Evita Silos de Información:** Ya sea mediante la edición unificada de noticias y eventos o la sincronización directa con Google Classroom e Instagram, cada regla funcional garantiza que cada dato se administre en un único lugar.

@@ -1,10 +1,10 @@
 ---
-title: "UPA Campus App (Capítulo 5): Backend e Interfaces"
+title: "UPA Campus App (Capítulo 5): Arquitectura Backend y Contratos API"
 date: 2026-10-30T16:45:00Z
-description: "Arquitectura de Backend y Contratos de API: Cómo la UPA Campus App utiliza FastAPI y Pydantic para blindar las reglas de la especificación funcional en la frontera del sistema e integrar Google Workspace e Instagram."
-summary: "¿Por qué jamás debe delegarse la seguridad solo al frontend? El capítulo 5 muestra cómo FastAPI, Pydantic y la capa de servicios convierten cada regla de la especificación en un contrato ejecutable."
-tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Arquitectura de Software", "Sistemas Empresariales"]
-categories: ["Arquitectura", "Sistemas Empresariales"]
+description: "¿Por qué una aplicación web no debe confiar ciegamente en el cliente? El Capítulo 5 muestra cómo FastAPI, Pydantic y una arquitectura en tres capas hacen cumplir la especificación en el servidor."
+summary: "¿Cómo se convierte un pliego funcional en código ejecutable en el servidor? El Capítulo 5 explica los contratos API con FastAPI, la validación con Pydantic y las reglas de seguridad en el backend."
+tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Arquitectura de Software", "Enterprise Systems"]
+categories: ["Arquitectura", "Enterprise Systems"]
 author: "Pascal Thommen"
 hidemeta: false
 ShowReadingTime: false
@@ -13,56 +13,35 @@ mermaid: true
 draft: false
 series: "upa-campus-app"
 series_part: 5
-series_part_title: "Backend e Interfaces"
+series_part_title: "Arquitectura Backend y Contratos API"
 hiddenInList: true
 ---
 
-Una regla de oro en la ingeniería de sistemas es no confiar nunca ciegamente en el cliente. Cualquier validación visual dentro del navegador (como un campo deshabilitado o una casilla obligatoria en HTML) puede saltarse en segundos utilizando la consola de desarrollo o enviando una petición directa con `curl`. Únicamente el backend constituye la frontera real de seguridad y lógica de negocio. La UPA Campus App construye este núcleo sobre Python con FastAPI y Pydantic. Este quinto capítulo enseña a estudiantes de informática empresarial y desarrolladores asistidos por IA (vibe-coders) cómo traducir una especificación funcional en contratos de interfaz (API Contracts), validaciones estrictas de entrada y una arquitectura limpia en tres capas.
+¿Por qué no basta con programar campos obligatorios y bloqueos de solo lectura únicamente en el formulario del navegador? Porque cualquier usuario puede saltar la interfaz visual usando las herramientas de desarrollo o un comando directo (`curl`) y enviar paquetes manipulados al servidor. El backend constituye la verdadera frontera de seguridad y lógica de una aplicación web. Este quinto capítulo muestra cómo la UPA Campus App traduce su especificación funcional en contratos de interfaz (API Contracts) y una arquitectura limpia de tres capas mediante Python, FastAPI y Pydantic.
 
 ---
 
-## Por Qué API-First y FastAPI Constituyen el Núcleo
+## Enfoque API-First con FastAPI: Sincronía entre Backend y Equipo Móvil
 
-En un proyecto universitario donde el equipo Web-Admin y el equipo móvil de Android (Kotlin) desarrollan en paralelo contra el mismo servidor, la falta de un contrato de interfaz explícito provoca errores inmediatos por nombres de campos o formatos de fecha incompatibles.
+Cuando un equipo desarrolla en paralelo el portal editorial web y la aplicación nativa para Android (Kotlin), cualquier duda sobre nombres de campos o formatos de fecha genera errores de integración. La UPA Campus App evita estos roces mediante un diseño **API-First** basado en **FastAPI**:
 
-El apartado 1 de la especificación funcional de la UPA Campus App fundamenta la elección de Python y FastAPI en tres ventajas técnicas directas:
-1. **60 por Ciento Menos de Código Repetitivo:** Frente a entornos verbosos tradicionales en Java, FastAPI reduce drásticamente el código de infraestructura repetitivo (boilerplate), priorizando el cumplimiento de plazos y la solidez de las reglas de negocio del campus.
-2. **Contratos Automáticos con OpenAPI y Swagger (`/docs`):** FastAPI lee los tipos declarados en Python y genera automáticamente la documentación interactiva en `/docs`. El equipo de Android Studio consulta allí cada ruta, parámetro obligatorio y código de respuesta en vivo sin depender de manuales externos desactualizados.
-3. **Concurrencia Asíncrona (`ASGI`):** Cuando decenas de estudiantes consultan su agenda al mismo tiempo y el backend solicita entregas en vivo a la API de Google Classroom, la espera de red no bloquea al servidor. El bucle de eventos asíncrono atiende otras peticiones mientras aguarda la respuesta externa.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Cliente (Android / Web-Admin)
-    participant API as Router FastAPI y Pydantic
-    participant Service as Capa de Servicios (Lógica de Negocio)
-    participant DB as PostgreSQL
-
-    Client->>API: HTTP POST /api/publications (Bearer JWT + Payload JSON)
-    Note over API: 1. Validar JWT y dominio (@example-campus.edu) (401/403)<br/>2. Validar esquema Pydantic y vigencia obligatoria (422)
-    API->>Service: Entrega de datos validados (DTO)
-    Note over Service: 3. Verificar reglas de dominio (ej. bloqueo solo lectura Instagram)
-    Service->>DB: Escritura transaccional en tabla posts
-    DB-->>Service: Registro confirmado
-    Service-->>API: Entidad de dominio
-    API-->>Client: 201 Created (Esquema de respuesta limpio)
-```
+1. **Documentación Interactiva Automática (`/docs`):** FastAPI lee las anotaciones de tipos de Python directamente del código y genera una especificación OpenAPI interactiva. El equipo de Android puede consultar en vivo qué parámetros exige cada ruta y qué estructura devuelve sin depender de manuales externos.
+2. **Concurrencia Asíncrona para Integraciones Externas (`ASGI`):** Cuando decenas de estudiantes abren su agenda al mismo tiempo por la mañana y el backend consulta las entregas pendientes en los servidores de Google Classroom, la espera de red no bloquea el servidor. El bucle de eventos asíncrono sigue atendiendo las peticiones del resto del campus sin demoras.
 
 ---
 
-## Pydantic como Guardián: La Especificación Funcional Hecha Esquema Ejecutable
+## Pydantic como Guardián de Entrada: La Especificación Hecha Esquema
 
-¿Cómo se garantiza a nivel arquitectónico que ningún aviso fijado arriba se guarde sin fecha de vencimiento, incluso si alguien intenta saltarse el formulario web? La respuesta es **Pydantic**: cada paquete JSON entrante debe atravesar un filtro declarativo antes de ejecutar una sola línea de lógica de negocio.
+Antes de que una petición entrante pueda ejecutar lógica de negocio o tocar la base de datos, debe superar la **validación de esquemas de Pydantic**, donde las reglas del pliego funcional están escritas como modelos declarativos:
 
 ```mermaid
-flowchart TD
-    ClientReq["Petición HTTP (JSON Crudo)"] --> Parser["Validación de Esquema Pydantic"]
-    Parser -->|Regla incumplida: ej. is_pinned sin expires_at| ErrResp["HTTP 422 Unprocessable Entity (Detalle Exacto del Error)"]
-    Parser -->|Datos Válidos y Tipados| Domain["Capa de Servicios (Lógica de Dominio)"]
-    Domain --> DB["Persistencia en PostgreSQL"]
+flowchart LR
+    Req["Petición HTTP Entrante\n(JSON Crudo del Cliente)"] --> Gate{"Validación de Esquema Pydantic"}
+    Gate -->|Incumple la Especificación\nej. is_pinned sin expires_at| Reject["HTTP 422 Unprocessable Entity\nRechazo Inmediato con Detalle del Error"]
+    Gate -->|Estructura y Tipos Válidos| Service["Capa de Servicios\nEjecuta la Lógica de Negocio"]
 ```
 
-El siguiente esquema de la UPA Campus App muestra cómo los requisitos del modelo unificado de publicaciones (`/api/publications`) se convierten directamente en reglas de código:
+El esquema `PublicationCreate` del endpoint unificado `/api/publications` muestra cómo las reglas funcionales se vuelven código autoverificable:
 
 ```python
 from datetime import datetime, timezone
@@ -84,85 +63,76 @@ class PublicationCreate(BaseModel):
     target_groups: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def enforce_specification_rules(self) -> "PublicationCreate":
-        # Regla 1 del pliego: Fijar arriba (is_pinned) exige fecha de vencimiento futura
+    def validate_publication_constraints(self) -> "PublicationCreate":
         if self.is_pinned:
             if self.expires_at is None:
-                raise ValueError("Las publicaciones fijadas arriba exigen fecha de vencimiento (expires_at).")
+                raise ValueError("Las publicaciones fijadas requieren fecha de vencimiento (expires_at).")
             if self.expires_at <= datetime.now(timezone.utc):
                 raise ValueError("La fecha de vencimiento (expires_at) debe estar en el futuro.")
 
-        # Regla 2 del pliego: Los eventos de calendario requieren fecha de realización
         if self.is_event and self.event_date is None:
-            raise ValueError("Los eventos de calendario requieren fecha y hora (event_date).")
+            raise ValueError("Los eventos de calendario requieren una fecha (event_date).")
 
         return self
 ```
 
-Si un cliente defectuoso intenta enviar una publicación fijada sin `expires_at`, FastAPI rechaza la llamada automáticamente con `HTTP 422 Unprocessable Entity`. Los datos inconsistentes jamás llegan a la base de datos.
+Aunque alguien intente eludir el formulario web enviando una petición directa para fijar un banner sin fecha de caducidad, Pydantic detiene el paquete en la puerta misma del servidor devolviendo `HTTP 422`.
 
 ---
 
-## Arquitectura en Tres Capas dentro del Backend
+## Arquitectura en Tres Capas frente al Código Espagueti
 
-Cuando se genera código con asistentes de IA sin una estructura clara, es común terminar con rutas HTTP, validaciones de permisos, llamadas a Google y consultas SQL mezcladas dentro de un mismo archivo. Al cambiar cualquier requisito del pliego, el código se rompe en cadena.
+Un riesgo frecuente al programar con asistentes de IA (vibe-coding) es que el código generado mezcle rutas HTTP, validaciones de permisos, llamadas a Google y consultas SQL dentro de una sola función. Al cambiar un requisito más adelante, el sistema falla en lugares inesperados.
 
-Por ello, la UPA Campus App divide el backend en tres capas con responsabilidades estrictas:
+El backend de la UPA Campus App organiza cada operación en tres capas bien delimitadas:
 
 ```mermaid
 flowchart TD
-    subgraph PresentationLayer["1. Capa de Enrutamiento (Endpoints FastAPI)"]
-        Router["Verbos HTTP, Códigos de Estado, Control OAuth/JWT, Esquemas Pydantic"]
+    subgraph Layer1["1. Capa de Enrutamiento (Endpoints FastAPI)"]
+        R["Recibe peticiones HTTP, verifica tokens JWT y ejecuta validaciones Pydantic"]
     end
-    subgraph BusinessLayer["2. Capa de Servicios (Lógica de Negocio e Integraciones)"]
-        Service["Bloqueo Solo Lectura Instagram, Sync Google Classroom, Caché de Directorio"]
+    subgraph Layer2["2. Capa de Servicios (Lógica de Negocio e Integraciones)"]
+        S["Aplica reglas de dominio (bloqueo de Instagram, permisos) y coordina Classroom / Directory"]
     end
-    subgraph PersistenceLayer["3. Capa de Repositorio (Acceso a Datos)"]
-        Repo["Consultas SQLAlchemy, Transacciones, Bitácora de Auditoría"]
-        DB[(PostgreSQL)]
+    subgraph Layer3["3. Capa de Repositorio (Acceso a Datos)"]
+        D["Encapsula consultas SQLAlchemy y transacciones contra PostgreSQL"]
     end
-
-    Router -->|DTO Validado| Service
-    Service -->|Orden de Dominio| Repo
-    Repo -->|SQL Parametrizado| DB
+    Layer1 --> Layer2 --> Layer3
 ```
 
-### Cómo la Capa de Servicios Ejecuta el Pliego Funcional
+### Qué Reglas Protege la Capa de Servicios
 
-Mientras Pydantic valida la estructura de los datos entrantes, la **Capa de Servicios** protege las reglas de negocio que dependen del estado almacenado o de integraciones externas:
+Mientras Pydantic comprueba la validez formal de un mensaje individual, la **Capa de Servicios** aplica las reglas que dependen del estado almacenado o de sistemas externos:
 
-#### 1. Bloqueo de Solo Lectura (`Read-Only`) para Publicaciones de Instagram
-¿Por qué la especificación funcional prohíbe editar el texto o la imagen de las publicaciones importadas desde Instagram? Porque un proceso automático sincroniza periódicamente la cuenta oficial de la universidad. La capa de servicios blinda esta regla en el servidor:
+#### 1. Protección de Solo Lectura en el Servidor para Publicaciones de Instagram
+En el editor web, los campos de texto e imagen de las publicaciones importadas desde Instagram aparecen bloqueados. Para asegurar que esa regla se respete también ante llamadas directas a la API, la capa de servicios verifica el origen del registro antes de guardar:
 
 ```python
 from fastapi import HTTPException, status
 
-def update_publication(db_post, payload, current_user):
-    # Regla del pliego: Las publicaciones de Instagram son de solo lectura en texto y medios
-    if db_post.post_type == "INSTAGRAM":
-        if payload.title != db_post.title or payload.content != db_post.content:
+def apply_publication_update(existing_post, payload):
+    if existing_post.post_type == "INSTAGRAM":
+        if payload.title != existing_post.title or payload.content != existing_post.content:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Las publicaciones sincronizadas de Instagram son de solo lectura.",
+                detail="Las publicaciones sincronizadas desde Instagram son de solo lectura.",
             )
-    # Los metadatos internos del campus (como fijar arriba con vencimiento) sí pueden actualizarse
-    db_post.is_pinned = payload.is_pinned
-    db_post.expires_at = payload.expires_at
-    return db_post
+    existing_post.is_pinned = payload.is_pinned
+    existing_post.expires_at = payload.expires_at
+    return existing_post
 ```
 
-#### 2. Caché Local de Google Workspace Directory para el Filtro Instantáneo
-En el portal Web-Admin, marketing segmenta los comunicados eligiendo destinatarios sobre una lista plana ordenada alfabéticamente de grupos reales de Google Workspace (`@example-campus.edu`). Si el backend consultara en vivo la API de Google Admin Directory cada vez que un editor abre la pantalla, la carga demoraría segundos y agotaría las cuotas de Google. Por ello, el servicio mantiene una caché local en el backend, ordena los grupos alfabéticamente y responde al filtro instantáneo en menos de 5 milisegundos.
+#### 2. Caché en Memoria del Directorio para el Filtro Instantáneo de Grupos
+Para que el equipo editorial filtre sin demoras la lista de grupos de Google Workspace (`@example-campus.edu`), el backend no consulta los servidores de Google en cada pulsación de tecla. La capa de servicios mantiene la lista sincronizada y preordenada alfabéticamente en memoria caché, entregándola en pocos milisegundos.
 
-#### 3. Federación de Identidad, Sincronización con Google Classroom y Privilegio Mínimo
-* **Validación Estricta de Dominio:** Durante el inicio de sesión con Google OAuth 2.0, el backend verifica criptográficamente el token y rechaza cualquier correo que no pertenezca al dominio institucional (`@example-campus.edu`).
-* **Sincronización en Vivo con Google Classroom:** Con el token OAuth autorizado por el estudiante, el servicio `ClassroomService` importa sus entregas académicas pendientes y las unifica con los eventos del campus dentro del módulo Agenda.
-* **Principio de Privilegio Mínimo:** Las cuentas nuevas nacen sin permisos administrativos preseleccionados, y cada endpoint de escritura bajo `/api/publications` o `/api/roles` exige el permiso específico mediante inyección de dependencias (`Depends(require_permission)`).
+#### 3. Identidad Institucional y Principio de Privilegio Mínimo (Least Privilege)
+Las políticas de acceso se aplican de forma uniforme en esta capa:
+* **Verificación Criptográfica de Dominio:** Durante el inicio de sesión con Google OAuth 2.0, el backend valida la firma del token y restringe el acceso interno a cuentas institucionales `@example-campus.edu`, eliminando cualquier botón de acceso rápido de prueba en el entorno productivo.
+* **Permisos Desmarcados por Defecto:** Al dar de alta un nuevo perfil administrativo en la matriz de roles, todos los permisos inician desactivados (`false`). Cada endpoint de escritura exige el permiso específico mediante inyección de dependencias en FastAPI (`Depends(require_permission)`).
 
 ---
 
 ## Conclusiones
 
-1. **El Backend es la Única Frontera Real de Seguridad:** Como la interfaz del cliente siempre puede manipularse desde fuera, la autenticación, el control de roles y la validación de datos deben ejecutarse sin excepciones en el servidor.
-2. **Pydantic Convierte la Especificación en Código Ejecutable:** Reglas como la vigencia obligatoria al fijar avisos arriba (`is_pinned` exige `expires_at`) operan como validadores automáticos que detienen peticiones inválidas con `HTTP 422`.
-3. **Capas Limpias y Caché Inteligente:** Separar enrutadores, servicios y repositorios mantiene el sistema ordenado, protege las publicaciones de Instagram frente a sobrescrituras accidentales y acelera la segmentación de grupos de Google Workspace mediante caché local.
+1. **Contratos Ejecutables con API-First y Pydantic:** La combinación de documentación OpenAPI automática y esquemas Pydantic rechaza peticiones incompletas (como avisos fijados sin fecha de vencimiento) antes de llegar a la lógica central.
+2. **Separación Clara en Tres Capas:** Dividir el backend en enrutamiento, servicios y repositorio mantiene el código limpio, impide sobrescribir publicaciones sincronizadas de Instagram y garantiza el principio de privilegio mínimo en cada operación.
