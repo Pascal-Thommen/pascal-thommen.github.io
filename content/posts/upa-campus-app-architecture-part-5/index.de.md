@@ -1,8 +1,8 @@
 ---
 title: "UPA Campus App (Kapitel 5): Backend und Schnittstellen"
 date: 2026-10-30T16:45:00Z
-description: "Backend-Architektur im Detail: Wie die UPA Campus App FastAPI für asynchrone REST-APIs, Pydantic für strenge Eingangskontrolle und eine modulare Schichtenarchitektur nutzt."
-summary: "Das Herzstück der Anwendungslogik: Kapitel 5 analysiert REST-Prinzipien, asynchrone Verarbeitung mit FastAPI, Schema-Validierung über Pydantic und eine saubere dreistufige Schichtenarchitektur."
+description: "Backend-Architektur und API-Verträge: Wie die UPA Campus App mit FastAPI und Pydantic die Geschäftsregeln des Pflichtenhefts an der Systemgrenze erzwingt und Google Workspace sowie Instagram anbindet."
+summary: "Warum darf man Prüfungen niemals nur dem Frontend überlassen? Kapitel 5 zeigt, wie FastAPI, Pydantic und die Service-Schicht jede Regel des Pflichtenhefts als ausführbaren Schnittstellenvertrag durchsetzen."
 tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Softwarearchitektur", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -17,262 +17,152 @@ series_part_title: "Backend und Schnittstellen"
 hiddenInList: true
 ---
 
-Robuste Unternehmensanwendungen benötigen ein zuverlässiges Backend, das Datenmodelle schützt, Business-Regeln durchsetzt und Schnittstellen für Web- und Mobilclients bereitstellt. Die UPA Campus App setzt für diesen Kern auf Python mit FastAPI und Pydantic. Während Teil 4 die Auslieferung über den Webclient beleuchtet hat, widmet sich dieser fünfte Teil der Backend-Logik: den Prinzipien moderner REST-APIs, den Gründen für FastAPI und asynchrone Ein- und Ausgabe, der schema-basierten Eingangskontrolle sowie einer modularen Schichtenarchitektur zur Trennung von Zuständigkeiten.
+Eine goldene Regel der Systemarchitektur lautet: Vertraue niemals dem Client. Jede Prüfung im Browser (wie ein deaktiviertes Textfeld oder ein Pflichtfeld-Häkchen in HTML) lässt sich mit den Entwicklerwerkzeugen des Browsers oder einem direkten Aufruf per `curl` in Sekunden umgehen. Erst das Backend bildet die verlässliche Sicherheits- und Logikgrenze einer Webanwendung. Die UPA Campus App setzt für diesen Kern auf Python mit FastAPI und Pydantic. Dieses fünfte Kapitel zeigt angehenden Wirtschaftsinformatikern und Vibe-Codern, wie man ein Pflichtenheft in verbindliche Schnittstellenverträge (API Contracts), strenge Eingabevalidierung und eine saubere Schichtenarchitektur übersetzt.
 
 ---
 
-## Was ist eine REST API: Ressourcen und Semantik
+## Warum API-First und FastAPI das Fundament bilden
 
-Representational State Transfer (REST) ist ein bewährter Architekturstil für verteilte Systeme im Web. Im Zentrum steht das zustandslose Request-Response-Modell: Jeder HTTP-Aufruf eines Clients enthält alle zur Verarbeitung erforderlichen Informationen, beispielsweise Authentifizierungs-Token in den Headern und Nutzdaten im Rumpf. Der Server speichert keine flüchtigen Client-Zustände im Speicher, was horizontale Skalierbarkeit und einfaches Caching ermöglicht.
+In einem arbeitsteiligen Projekt entwickeln das Web-Team und das Android-Team (Kotlin) gleichzeitig gegen denselben Server. Ohne einen präzisen Schnittstellenvertrag entstehen sofort Reibungsverluste über Feldnamen, Datumsformate oder Fehlercodes.
+
+Das Pflichtenheft der UPA Campus App begründet die Wahl von Python und FastAPI mit drei konkreten Engineering-Faktoren:
+1. **Reduktion von Boilerplate-Code:** Im Vergleich zu klassischen, stark zeremoniellen Enterprise-Stacks reduziert FastAPI repetitiven Infrastruktur-Code um rund 60 Prozent, sodass sich das Team voll auf die fachlichen Anforderungen des Campus konzentrieren kann.
+2. **Automatischer Schnittstellenvertrag über OpenAPI (`/docs`):** FastAPI liest die Python-Typannotationen aus und generiert vollautomatisch eine interaktive Swagger-Dokumentation unter `/docs`. Das Android-Team sieht dort live jeden Endpunkt, jedes Pflichtfeld und jeden HTTP-Statuscode, ohne auf manuell gepflegte Word-Dokumente warten zu müssen.
+3. **Asynchrone Nebenläufigkeit (`ASGI`):** Wenn Dutzende Studierende gleichzeitig ihre Agenda öffnen und das Backend im Hintergrund Abgabefristen von der Google Classroom API abruft, blockiert das Warten auf Google keinen Server-Thread. Die asynchrone Event-Loop bedient währenddessen nahtlos weitere Anfragen.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Client (Web / Mobile)
-    participant API as FastAPI Backend
+    actor Client as Client (Android / Web-Admin)
+    participant API as FastAPI Router & Pydantic
+    participant Service as Service Layer (Geschäftslogik)
     participant DB as PostgreSQL
 
-    Client->>API: HTTP POST /api/v1/publications (Bearer Token + JSON Payload)
-    Note over API: 1. Token prüfen (401/403)<br/>2. Pydantic Validierung (422)<br/>3. Business Logik verarbeiten
-    API->>DB: INSERT INTO publications (...)
-    DB-->>API: Neuer Datensatz mit ID und Zeitstempel
-    API-->>Client: 201 Created (JSON Response Schema)
+    Client->>API: HTTP POST /api/publications (Bearer JWT + JSON Payload)
+    Note over API: 1. JWT & Domain (@example-campus.edu) prüfen (401/403)<br/>2. Pydantic Schema & Pflicht-Ablaufdatum prüfen (422)
+    API->>Service: Übergabe validierter Daten (DTO)
+    Note over Service: 3. Fachregeln prüfen (z.B. Instagram Read-Only Schutz)
+    Service->>DB: Transaktionales Speichern in Tabelle posts
+    DB-->>Service: Gespeicherter Datensatz
+    Service-->>API: Domänen-Objekt
+    API-->>Client: 201 Created (Bereinigtes Response-Schema)
 ```
-
-### 1. Ressourcenzentrierung und Standard-HTTP-Verben
-
-REST strukturiert Schnittstellen um fachliche Ressourcen (z.B. `/api/v1/publications` oder `/api/v1/courses`). Operationen auf diesen Ressourcen werden durch standardisierte HTTP-Methoden gesteuert:
-
-* **GET:** Liest Ressourcen ab. Die Operation ist idempotent und seiteneffektfrei (z.B. `GET /api/v1/publications`).
-* **POST:** Erstellt eine neue Ressource unterhalb der angegebenen Kollektion (z.B. `POST /api/v1/publications`).
-* **PUT / PATCH:** Aktualisiert Ressourcen. `PUT` ersetzt den gesamten Datensatz, während `PATCH` gezielt einzelne Attribute modifiziert.
-* **DELETE:** Entfernt eine Ressource idempotent aus dem System (z.B. `DELETE /api/v1/publications/42`).
-
-### 2. Semantische HTTP-Statuscodes
-
-Eine saubere REST API kommuniziert den Ausgang einer Operation nicht über proprietäre Fehlerobjekte mit HTTP 200, sondern über offizielle HTTP-Statuscodes:
-
-* **200 OK:** Erfolgreiche Anfrage mit Datenrückgabe (z.B. bei GET oder PATCH).
-* **201 Created:** Ressource erfolgreich erzeugt (Standardantwort bei POST).
-* **400 Bad Request:** Syntaktisch fehlerhafter Aufruf, der vom Server nicht interpretiert werden kann.
-* **401 Unauthorized:** Fehlende oder ungültige Authentifizierung (z.B. abgelaufenes JWT-Token).
-* **403 Forbidden:** Authentifizierter Nutzer besitzt keine ausreichenden Berechtigungen für diese Ressource.
-* **404 Not Found:** Angefragte Ressource existiert nicht im Datenbestand.
-* **422 Unprocessable Entity:** Syntaktisch korrektes JSON, dessen Felder fachliche oder typbezogene Validierungsregeln verletzen.
-* **500 Internal Server Error:** Unerwarteter Laufzeitfehler auf Serverseite.
 
 ---
 
-## FastAPI als Framework: Performance und Schnittstellenverträge
+## Pydantic als Türsteher: Das Pflichtenheft als ausführbares Schema
 
-Klassische Python-Webframeworks wie Django oder Flask basieren auf dem synchronen WSGI-Standard (Web Server Gateway Interface). Jeder eingehende Request blockiert einen Worker-Thread, solange die Anwendung auf langsame Datenbanken oder Netzwerkverbindungen wartet.
-
-FastAPI nutzt moderne Python-Typisierung (PEP 484) und den asynchronen ASGI-Standard (Asynchronous Server Gateway Interface) auf Basis von Starlette und Uvicorn:
-
-```mermaid
-flowchart LR
-    subgraph AsyncModel["Asynchrones ASGI-Modell (FastAPI)"]
-        Req1["Request A (I/O Wait)"] --> Loop["Event Loop"]
-        Req2["Request B (Compute)"] --> Loop
-        Req3["Request C (I/O Wait)"] --> Loop
-        Loop --> Worker["Single Worker Thread bedient hunderte Conns"]
-    end
-```
-
-Die architektonischen Hauptgründe für den Einsatz in der UPA Campus App:
-
-1. **Hohe Nebenläufigkeit durch async/await:** I/O-intensive Operationen (wie Datenbankabfragen via SQLAlchemy oder HTTP-Calls an Universitätskataloge) blockieren keine Threads. Der Event-Loop wechselt während der Wartezeit sofort zur Bearbeitung anderer Anfragen.
-2. **Native OpenAPI- und Swagger-Spezifikation:** FastAPI generiert aus den Python-Typdefinitionen vollautomatisch OpenAPI-3-Spezifikationen. Unter `/docs` steht eine interaktive Swagger-Benutzeroberfläche zur Verfügung, unter `/redoc` eine strukturierte Dokumentation. Frontend-Entwickler und externe Systeme erhalten verbindliche Schnittstellenverträge ohne manuelle Synchronisationsarbeit.
-3. **Dependency Injection als Entkopplungsmechanismus:** FastAPI bietet ein deklaratives Dependency-Injection-System über `Depends()`. Datenbankverbindungen, Authentifizierungskontexte und Repositories werden typsicher in Controller-Funktionen injiziert, was Unit- und Integrationstests signifikant vereinfacht.
-
----
-
-## Pydantic Schemas und strenge Eingangskontrolle
-
-Sicherheit und Datenintegrität beginnen an der Systemgrenze. Ungültige, fehlerhaft typisierte oder schadhafte Nutzdaten dürfen niemals die Geschäfts- oder Persistenzschicht erreichen. Pydantic dient als Schutzschild vor unvalidierten Payloads.
+Wie verhindert man auf Architekturebene, dass ein angeheftetes Notfall-Banner ohne Ablaufdatum gespeichert wird, selbst wenn jemand das Web-Formular umgeht? Die Antwort liegt in **Pydantic**: Jede eingehende JSON-Nachricht muss zuerst durch ein deklaratives Schema-Tor, bevor auch nur eine Zeile Geschäftslogik ausgeführt wird.
 
 ```mermaid
 flowchart TD
-    ClientReq["Client HTTP Request (JSON Body)"] --> Parser["Pydantic Schemas (Eingangskontrolle)"]
-    Parser -->|Typfehler / Constraint verletzt| ErrResp["HTTP 422 Unprocessable Entity (Fehlerdetails)"]
-    Parser -->|Valide Nutzdaten| Domain["Service & Domänenlogik"]
-    Domain --> DB["Datenbank (PostgreSQL)"]
-    DB --> OutSchema["Pydantic Response Schema (Ausgangskontrolle)"]
-    OutSchema --> ClientResp["HTTP 200/201 (Bereinigte Antwort)"]
+    ClientReq["HTTP Request (Rohes JSON)"] --> Parser["Pydantic Schema-Validierung"]
+    Parser -->|Regel verletzt: z.B. is_pinned ohne expires_at| ErrResp["HTTP 422 Unprocessable Entity (Präzise Fehlerliste)"]
+    Parser -->|Valide & typgeprüfte Daten| Domain["Service Layer (Geschäftslogik)"]
+    Domain --> DB["PostgreSQL Persistenz"]
 ```
 
-### Trennung von Eingabe- und Ausgabe-Schemas
-
-In der UPA Campus App existiert für jede Entität eine strikte Trennung zwischen Create-, Update- und Response-Modellen:
+Das folgende Schema aus der UPA Campus App zeigt, wie die Anforderungen des vereinheitlichten Publikationsmodells (`/api/publications`) eins zu eins in Code gegossen werden:
 
 ```python
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime, timezone
+from typing import Literal
+from pydantic import BaseModel, Field, model_validator
 
-class PublicationBase(BaseModel):
-    title: str = Field(..., min_length=3, max_length=150, description="Titel des Beitrags")
-    content: str = Field(..., min_length=10, max_length=5000, description="Inhalt des Beitrags")
-    category: str = Field(default="general", max_length=50)
+class PublicationCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=200)
+    content: str = Field(..., min_length=1, max_length=10000)
+    post_type: Literal["MANUAL", "EVENT", "EMERGENCY_BANNER", "INSTAGRAM"] = "MANUAL"
+    media_type: Literal["NONE", "IMAGE", "VIDEO", "DOCUMENT"] = "NONE"
+    media_url: str | None = None
+    is_event: bool = False
+    event_date: datetime | None = None
+    is_pinned: bool = False
+    expires_at: datetime | None = None
+    reminder_value: int | None = Field(default=None, ge=1, le=365)
+    reminder_unit: Literal["MINUTES", "HOURS", "DAYS"] | None = None
+    target_groups: list[str] = Field(default_factory=list)
 
-class PublicationCreate(PublicationBase):
-    """Schema für eingehende POST-Requests."""
-    pass
+    @model_validator(mode="after")
+    def enforce_specification_rules(self) -> "PublicationCreate":
+        # Pflichtenheft-Regel 1: Angeheftete Beiträge (is_pinned) benötigen zwingend ein Ablaufdatum
+        if self.is_pinned:
+            if self.expires_at is None:
+                raise ValueError("Angeheftete Beiträge erfordern ein Ablaufdatum (expires_at).")
+            if self.expires_at <= datetime.now(timezone.utc):
+                raise ValueError("Das Ablaufdatum (expires_at) muss in der Zukunft liegen.")
 
-class PublicationResponse(PublicationBase):
-    """Schema für ausgehende Responses mit System-Metadaten."""
-    id: int
-    author_id: int
-    created_at: datetime
-    updated_at: datetime | None = None
+        # Pflichtenheft-Regel 2: Kalender-Events benötigen ein Veranstaltungsdatum
+        if self.is_event and self.event_date is None:
+            raise ValueError("Veranstaltungen im Kalender erfordern ein Datum (event_date).")
 
-    model_config = ConfigDict(from_attributes=True)
+        return self
 ```
 
-### Automatische Validierung und präzise Fehlerdiagnose
-
-Sendet ein Client fehlerhafte Daten (z.B. einen Titel mit nur 2 Zeichen oder ein ungültiges Datenformat), verwirft FastAPI den Aufruf automatisch vor der Ausführung von Programmcode und liefert eine strukturierte Fehlermeldung:
-
-```json
-{
-  "detail": [
-    {
-      "type": "string_too_short",
-      "loc": ["body", "title"],
-      "msg": "String should have at least 3 characters",
-      "input": "Hi"
-    }
-  ]
-}
-```
-
-Durch das Response-Schema (`PublicationResponse`) wird zudem sichergestellt, dass interne Felder (wie Passworthashes oder interne Flags) niemals versehentlich an den Client ausgeliefert werden.
+Versucht ein fehlerhafter Client, einen angehefteten Beitrag ohne `expires_at` zu senden, bricht FastAPI die Anfrage sofort mit `HTTP 422 Unprocessable Entity` ab. Ungültige Zustände können die Datenbank gar nicht erst erreichen.
 
 ---
 
-## Schichtenarchitektur im Backend: Trennung von Belangen
+## Die dreistufige Schichtenarchitektur im Backend
 
-Wachsende Enterprise-Systeme erfordern eine strikte Trennung von Zuständigkeiten (Separation of Concerns). Die UPA Campus App folgt einer dreistufigen Schichtenarchitektur, bei der jede Schicht eine klar definierte Aufgabe erfüllt:
+Wenn KI-Assistenten ohne architektonische Vorgaben Code generieren, landet häufig alles in einer einzigen Datei: HTTP-Routing, Berechtigungsprüfungen, Drittanbieter-Aufrufe und SQL-Abfragen. Sobald sich eine Anforderung im Pflichtenheft ändert, bricht das System an unerwarteten Stellen.
+
+Die UPA Campus App trennt das Backend deshalb strikt in drei Schichten:
 
 ```mermaid
 flowchart TD
-    subgraph PresentationLayer["1. API & Routing Layer (FastAPI Routers)"]
-        Router["Endpunkt-Definition, HTTP-Verben, Pydantic-Bindung"]
+    subgraph PresentationLayer["1. Routing Layer (FastAPI Endpoints)"]
+        Router["HTTP-Verben, Statuscodes, OAuth/JWT-Prüfung, Pydantic-Schemas"]
     end
-    subgraph BusinessLayer["2. Service Layer (Business Logic)"]
-        Service["Fachliche Regeln, Autorisierung, Validierung von Abhängigkeiten"]
+    subgraph BusinessLayer["2. Service Layer (Geschäftslogik & Integrationen)"]
+        Service["Instagram Read-Only Schutz, Google Classroom Sync, Directory-Cache"]
     end
-    subgraph PersistenceLayer["3. Data Access Layer (Repositories & ORM)"]
-        Repo["SQLAlchemy Queries, Transaktionen, Session-Handhabung"]
+    subgraph PersistenceLayer["3. Repository Layer (Datenzugriff)"]
+        Repo["SQLAlchemy Queries, Transaktionen, Audit-Protokollierung"]
         DB[(PostgreSQL)]
     end
 
-    Router -->|Ruft auf| Service
-    Service -->|Nutzt| Repo
-    Repo -->|Liest / Schreibt| DB
+    Router -->|Validiertes DTO| Service
+    Service -->|Domänen-Befehl| Repo
+    Repo -->|Parametrisiertes SQL| DB
 ```
 
-### Die Schichten im Detail
+### Wie der Service Layer die Geschäftsregeln des Pflichtenhefts durchsetzt
 
-1. **Routing Layer (`api/v1/endpoints/`):**
-   * Definiert URL-Pfade, HTTP-Methoden und Statuscodes.
-   * Prüft Authentifizierungs-Header und instanziiert Pydantic-Schemas.
-   * Übergibt validierte DTOs (Data Transfer Objects) an den Service Layer.
-   * Enthält keinerlei SQL-Statements oder komplexe Geschäftsregeln.
+Während Pydantic die Struktur einer einzelnen Anfrage prüft, überwacht der **Service Layer** die Regeln, die den aktuellen Datenbankzustand oder externe Systeme betreffen:
 
-2. **Service Layer (`services/`):**
-   * Kapselt die zentrale Domänenlogik.
-   * Prüft fachliche Bedingungen: Darf dieser Nutzer in dieser Kategorie publizieren? Ist das Vorlesungssemester noch aktiv?
-   * Koordiniert mehrere Repositories und externe Benachrichtigungen.
-   * Ist vollständig unabhängig vom Transportprotokoll HTTP.
-
-3. **Repository Layer (`repositories/` & `models/`):**
-   * Kapselt Datenbankoperationen über SQLAlchemy ORM.
-   * Verhindert das Streuen von ORM-Abfragen über die gesamte Codebasis.
-   * Kontrolliert Transaktionen, Joins und Datenbank-Sessions.
-
-### Konkrete Implementierung mit Dependency Injection
-
-Das Zusammenspiel der drei Schichten zeigt sich in der Erstellung einer studentischen Publikation:
+#### 1. Schreibschutz (`Read-Only`) für synchronisierte Instagram-Beiträge
+Warum verbietet das Pflichtenheft das Bearbeiten von Text und Bild bei importierten Instagram-Beiträgen? Weil ein Hintergrund-Job den offiziellen Instagram-Feed der Universität periodisch abgleicht. Der Service Layer setzt diese Schutzregel hart durch:
 
 ```python
-# 1. Routing Schicht (api/v1/endpoints/publications.py)
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.publication import PublicationCreate, PublicationResponse
-from app.services.publication_service import PublicationService
-from app.core.security import get_current_user
-
-router = APIRouter(prefix="/publications", tags=["Publications"])
-
-@router.post("/", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED)
-def create_publication(
-    payload: PublicationCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    service = PublicationService(db)
-    return service.create_for_user(payload, user_id=current_user.id)
-```
-
-```python
-# 2. Service Schicht (services/publication_service.py)
 from fastapi import HTTPException, status
-from app.repositories.publication_repository import PublicationRepository
-from app.schemas.publication import PublicationCreate
 
-class PublicationService:
-    def __init__(self, db):
-        self.repo = PublicationRepository(db)
-
-    def create_for_user(self, payload: PublicationCreate, user_id: int):
-        # Fachliche Prüfung: Spam-Schutz oder Statusüberprüfung
-        recent_count = self.repo.count_recent_by_user(user_id, minutes=5)
-        if recent_count >= 3:
+def update_publication(db_post, payload, current_user):
+    # Pflichtenheft-Regel: Instagram-Beiträge sind für Text und Medien schreibgeschützt
+    if db_post.post_type == "INSTAGRAM":
+        if payload.title != db_post.title or payload.content != db_post.content:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Publikationslimit erreicht. Bitte einige Minuten warten.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Synchronisierte Instagram-Beiträge sind schreibgeschützt (Read-Only).",
             )
-        return self.repo.create(payload, author_id=user_id)
+    # Interne Metadaten (wie Zielgruppen oder Anheften mit Ablaufdatum) dürfen aktualisiert werden
+    db_post.is_pinned = payload.is_pinned
+    db_post.expires_at = payload.expires_at
+    return db_post
 ```
 
-```python
-# 3. Repository Schicht (repositories/publication_repository.py)
-from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from app.models.publication import Publication
-from app.schemas.publication import PublicationCreate
+#### 2. Google Workspace Directory Cache für den Sofort-Filter
+Im Web-Admin wählt das Marketing-Team Zielgruppen aus einer alphabetisch sortierten Liste echter Google-Workspace-Gruppen (`@example-campus.edu`). Würde das Backend bei jedem Öffnen des Editors live die Google Admin Directory API aufrufen, würde das Laden mehrere Sekunden dauern und in Google-Rate-Limits laufen. Der Service Layer hält die Gruppenliste deshalb in einem lokalen Backend-Cache vor, sortiert sie alphabetisch vor und liefert sie in unter 5 Millisekunden an das Frontend aus.
 
-class PublicationRepository:
-    def __init__(self, db: Session):
-        self.db = db
-
-    def count_recent_by_user(self, user_id: int, minutes: int) -> int:
-        threshold = datetime.now(timezone.utc) - timedelta(minutes=minutes)
-        return self.db.query(Publication).filter(
-            Publication.author_id == user_id,
-            Publication.created_at >= threshold
-        ).count()
-
-    def create(self, payload: PublicationCreate, author_id: int) -> Publication:
-        db_obj = Publication(
-            title=payload.title,
-            content=payload.content,
-            category=payload.category,
-            author_id=author_id,
-        )
-        self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
-        return db_obj
-```
-
-Dieser Entwurf entkoppelt Komponenten vollständig: Änderungen am Datenbankschema berühren lediglich das Repository, während Validierungsänderungen isoliert in Pydantic-Schemas stattfinden.
+#### 3. Identitäts-Föderation, Google Classroom Sync und Least Privilege
+* **Exklusiver Domain-Check:** Beim Login über Google OAuth 2.0 prüft das Backend kryptografisch die Signatur des Google-Tokens und weist jede E-Mail-Adresse ab, die nicht zur Hochschul-Domain (`@example-campus.edu`) gehört.
+* **Live-Synchronisation mit Google Classroom:** Mit dem beim OAuth-Login gewährten Zugriffstoken ruft der `ClassroomService` die persönlichen Kurs-Abgabefristen des Studierenden ab und führt sie für das Agenda-Modul mit den internen Campus-Terminen zusammen.
+* **Prinzip minimaler Rechte (Least Privilege):** Neue Benutzerkonten erhalten bei der Anlage keine vorausgewählten Administrator-Berechtigungen, und jeder schreibende Endpunkt unter `/api/publications` oder `/api/roles` prüft über FastAPI Dependency Injection (`Depends(require_permission)`), ob die benötigte Einzelberechtigung vorliegt.
 
 ---
 
 ## Fazit
 
-1. **Typsicherheit und Resilienz:** Die Kombination aus FastAPI und Pydantic sichert Systemgrenzen deklarativ ab. Fehlerhafte Payloads werden abgewiesen, bevor Geschäftslogik ausgeführt wird, was die Anfälligkeit für Injektionen und inkonsistente Zustände minimiert.
-2. **Entwickler- und Integrationseffizienz:** Die automatische Bereitstellung standardisierter OpenAPI-Spezifikationen eliminiert Diskrepanzen zwischen Frontend- und Backend-Teams und beschleunigt Schnittstellen-Tests.
-3. **Wartbarkeit durch Schichtentrennung:** Die modulare Aufteilung in Router, Services und Repositories isoliert HTTP-Transport, Domänenregeln und Persistenz. Das System bleibt auch bei wachsendem Funktionsumfang modular testbar und flexibel erweiterbar.
+1. **Das Backend ist die einzige verlässliche Sicherheitsgrenze:** Weil Client-Code jederzeit manipuliert werden kann, müssen Authentifizierung, Rollenprüfung und Schema-Validierung kompromisslos auf dem Server stattfinden.
+2. **Pydantic übersetzt das Pflichtenheft in ausführbare Regeln:** Vorgaben wie das verpflichtende Ablaufdatum beim Anheften von Bannern (`is_pinned` erfordert `expires_at`) werden als Schema-Validator definiert und weisen fehlerhafte Aufrufe automatisch mit `HTTP 422` ab.
+3. **Saubere Schichten und intelligentes Caching:** Die Trennung in Router, Service und Repository hält den Code wartbar, schützt synchronisierte Instagram-Beiträge vor versehentlichem Überschreiben und beschleunigt die Google-Workspace-Gruppenauswahl durch lokales Caching.

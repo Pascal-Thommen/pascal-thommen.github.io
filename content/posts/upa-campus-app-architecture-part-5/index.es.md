@@ -1,10 +1,10 @@
 ---
 title: "UPA Campus App (Capítulo 5): Backend e Interfaces"
 date: 2026-10-30T16:45:00Z
-description: "Arquitectura backend en detalle: Cómo UPA Campus App utiliza FastAPI para APIs REST asíncronas, Pydantic para validación estricta de entradas y una arquitectura modular por capas."
-summary: "El motor central de la lógica del sistema: El capítulo 5 analiza principios REST, procesamiento asíncrono con FastAPI, validación de esquemas con Pydantic y una arquitectura limpia en tres capas."
-tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Arquitectura de Software", "Enterprise Systems"]
-categories: ["Arquitectura", "Enterprise Systems"]
+description: "Arquitectura de Backend y Contratos de API: Cómo la UPA Campus App utiliza FastAPI y Pydantic para blindar las reglas de la especificación funcional en la frontera del sistema e integrar Google Workspace e Instagram."
+summary: "¿Por qué jamás debe delegarse la seguridad solo al frontend? El capítulo 5 muestra cómo FastAPI, Pydantic y la capa de servicios convierten cada regla de la especificación en un contrato ejecutable."
+tags: ["Backend", "FastAPI", "Python", "REST API", "Pydantic", "Arquitectura de Software", "Sistemas Empresariales"]
+categories: ["Arquitectura", "Sistemas Empresariales"]
 author: "Pascal Thommen"
 hidemeta: false
 ShowReadingTime: false
@@ -17,262 +17,152 @@ series_part_title: "Backend e Interfaces"
 hiddenInList: true
 ---
 
-Las aplicaciones empresariales dependen de un backend determinista para proteger el estado del dominio, aplicar reglas de negocio y proporcionar interfaces fiables a los clientes web y móviles. UPA Campus App construye esta base sobre Python utilizando FastAPI y Pydantic. Tras examinar la entrega en clientes web en la parte 4, esta quinta entrega analiza la arquitectura del backend: los principios de diseño de APIs REST, las ventajas de FastAPI y el procesamiento asíncrono, la validación estricta de entradas mediante Pydantic y una arquitectura modular por capas para separar responsabilidades.
+Una regla de oro en la ingeniería de sistemas es no confiar nunca ciegamente en el cliente. Cualquier validación visual dentro del navegador (como un campo deshabilitado o una casilla obligatoria en HTML) puede saltarse en segundos utilizando la consola de desarrollo o enviando una petición directa con `curl`. Únicamente el backend constituye la frontera real de seguridad y lógica de negocio. La UPA Campus App construye este núcleo sobre Python con FastAPI y Pydantic. Este quinto capítulo enseña a estudiantes de informática empresarial y desarrolladores asistidos por IA (vibe-coders) cómo traducir una especificación funcional en contratos de interfaz (API Contracts), validaciones estrictas de entrada y una arquitectura limpia en tres capas.
 
 ---
 
-## Qué es una API REST: Modelado de recursos y semántica
+## Por Qué API-First y FastAPI Constituyen el Núcleo
 
-Representational State Transfer (REST) es un estilo de arquitectura probado para sistemas distribuidos en la web. Su núcleo es el modelo sin estado (stateless) de petición y respuesta: Cada llamada HTTP de un cliente incluye toda la información necesaria para el procesamiento, como tokens de autenticación en cabeceras y datos estructurados en el cuerpo. El servidor no almacena sesiones efímeras en memoria, lo que facilita la escalabilidad horizontal y el almacenamiento en caché.
+En un proyecto universitario donde el equipo Web-Admin y el equipo móvil de Android (Kotlin) desarrollan en paralelo contra el mismo servidor, la falta de un contrato de interfaz explícito provoca errores inmediatos por nombres de campos o formatos de fecha incompatibles.
+
+El apartado 1 de la especificación funcional de la UPA Campus App fundamenta la elección de Python y FastAPI en tres ventajas técnicas directas:
+1. **60 por Ciento Menos de Código Repetitivo:** Frente a entornos verbosos tradicionales en Java, FastAPI reduce drásticamente el código de infraestructura repetitivo (boilerplate), priorizando el cumplimiento de plazos y la solidez de las reglas de negocio del campus.
+2. **Contratos Automáticos con OpenAPI y Swagger (`/docs`):** FastAPI lee los tipos declarados en Python y genera automáticamente la documentación interactiva en `/docs`. El equipo de Android Studio consulta allí cada ruta, parámetro obligatorio y código de respuesta en vivo sin depender de manuales externos desactualizados.
+3. **Concurrencia Asíncrona (`ASGI`):** Cuando decenas de estudiantes consultan su agenda al mismo tiempo y el backend solicita entregas en vivo a la API de Google Classroom, la espera de red no bloquea al servidor. El bucle de eventos asíncrono atiende otras peticiones mientras aguarda la respuesta externa.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Cliente (Web / Móvil)
-    participant API as FastAPI Backend
+    actor Client as Cliente (Android / Web-Admin)
+    participant API as Router FastAPI y Pydantic
+    participant Service as Capa de Servicios (Lógica de Negocio)
     participant DB as PostgreSQL
 
-    Client->>API: HTTP POST /api/v1/publications (Bearer Token + JSON Payload)
-    Note over API: 1. Validar Token (401/403)<br/>2. Validación Pydantic (422)<br/>3. Ejecutar Lógica de Negocio
-    API->>DB: INSERT INTO publications (...)
-    DB-->>API: Nuevo registro con ID y marcas de tiempo
-    API-->>Client: 201 Created (JSON Response Schema)
+    Client->>API: HTTP POST /api/publications (Bearer JWT + Payload JSON)
+    Note over API: 1. Validar JWT y dominio (@example-campus.edu) (401/403)<br/>2. Validar esquema Pydantic y vigencia obligatoria (422)
+    API->>Service: Entrega de datos validados (DTO)
+    Note over Service: 3. Verificar reglas de dominio (ej. bloqueo solo lectura Instagram)
+    Service->>DB: Escritura transaccional en tabla posts
+    DB-->>Service: Registro confirmado
+    Service-->>API: Entidad de dominio
+    API-->>Client: 201 Created (Esquema de respuesta limpio)
 ```
-
-### 1. Orientación a recursos y verbos HTTP estándar
-
-REST estructura los servicios en torno a recursos de negocio específicos (por ejemplo, `/api/v1/publications` o `/api/v1/courses`). Las operaciones sobre estos recursos se gestionan mediante métodos HTTP estandarizados:
-
-* **GET:** Recupera representaciones de recursos. La operación es idempotente y no genera mutaciones (por ejemplo, `GET /api/v1/publications`).
-* **POST:** Crea una nueva entidad dentro de la colección especificada (por ejemplo, `POST /api/v1/publications`).
-* **PUT / PATCH:** Actualiza el estado de un recurso. `PUT` reemplaza la representación completa, mientras que `PATCH` aplica modificaciones parciales.
-* **DELETE:** Elimina un recurso de forma idempotente del sistema (por ejemplo, `DELETE /api/v1/publications/42`).
-
-### 2. Códigos de estado HTTP semánticos
-
-Una API REST sólida comunica los resultados mediante códigos de estado HTTP oficiales en lugar de encapsular errores en respuestas genéricas HTTP 200:
-
-* **200 OK:** Petición exitosa con datos de respuesta esperados (GET o PATCH).
-* **201 Created:** Creación exitosa de un nuevo recurso (estándar para POST).
-* **400 Bad Request:** Sintaxis de petición defectuosa que el servidor no puede interpretar.
-* **401 Unauthorized:** Autenticación ausente, caducada o inválida (por ejemplo, token JWT expirado).
-* **403 Forbidden:** La identidad autenticada carece de permisos para el recurso solicitado.
-* **404 Not Found:** El recurso solicitado no existe en la base de datos.
-* **422 Unprocessable Entity:** Carga JSON sintácticamente válida que incumple restricciones de tipo o reglas de validación.
-* **500 Internal Server Error:** Error imprevisto en el servidor durante la ejecución.
 
 ---
 
-## FastAPI como framework: Rendimiento y contratos de interfaz
+## Pydantic como Guardián: La Especificación Funcional Hecha Esquema Ejecutable
 
-Los frameworks web clásicos en Python, como Django o Flask, se diseñaron sobre el estándar síncrono WSGI (Web Server Gateway Interface). En WSGI, cada petición entrante bloquea un hilo del sistema operativo mientras espera respuestas de bases de datos o servicios externos.
-
-FastAPI aprovecha el tipado moderno de Python (PEP 484) y el estándar asíncrono ASGI (Asynchronous Server Gateway Interface) mediante Starlette y Uvicorn:
-
-```mermaid
-flowchart LR
-    subgraph AsyncModel["Modelo Asíncrono ASGI (FastAPI)"]
-        Req1["Petición A (Espera I/O)"] --> Loop["Event Loop"]
-        Req2["Petición B (Cálculo)"] --> Loop
-        Req3["Petición C (Espera I/O)"] --> Loop
-        Loop --> Worker["Un solo hilo atiende cientos de conexiones"]
-    end
-```
-
-Factores arquitectónicos determinantes en UPA Campus App:
-
-1. **Alta concurrencia mediante async/await:** Las operaciones intensivas en entrada/salida (consultas a PostgreSQL mediante SQLAlchemy o llamadas a catálogos universitarios) no bloquean hilos. El bucle de eventos procesa otras peticiones concurrentes durante los tiempos de espera de red.
-2. **Especificación OpenAPI y Swagger nativa:** FastAPI genera documentación OpenAPI 3 de forma automática a partir de las declaraciones de tipos de Python. La interfaz interactiva Swagger UI se encuentra disponible en `/docs` y ReDoc en `/redoc`. Los desarrolladores de frontend disponen de contratos de datos formales sin desincronización documental.
-3. **Inyección de dependencias modular:** FastAPI incluye un sistema declarativo de inyección de dependencias mediante `Depends()`. Sesiones de base de datos, credenciales de usuario y repositorios se inyectan en los controladores de forma tipada, facilitando las pruebas unitarias.
-
----
-
-## Esquemas Pydantic y validación en el perímetro
-
-La integridad de datos y la seguridad deben garantizarse en la frontera del sistema. Datos no válidos, mal estructurados o potencialmente dañinos nunca deben alcanzar la capa de negocio o de persistencia. Pydantic actúa como barrera de control.
+¿Cómo se garantiza a nivel arquitectónico que ningún aviso fijado arriba se guarde sin fecha de vencimiento, incluso si alguien intenta saltarse el formulario web? La respuesta es **Pydantic**: cada paquete JSON entrante debe atravesar un filtro declarativo antes de ejecutar una sola línea de lógica de negocio.
 
 ```mermaid
 flowchart TD
-    ClientReq["Petición HTTP Cliente (Cuerpo JSON)"] --> Parser["Esquemas Pydantic (Validación en Entrada)"]
-    Parser -->|Error de tipo / Restricción violada| ErrResp["HTTP 422 Unprocessable Entity (Detalles de error)"]
-    Parser -->|Datos válidos| Domain["Servicio y Lógica de Dominio"]
-    Domain --> DB["Base de Datos (PostgreSQL)"]
-    DB --> OutSchema["Esquema Pydantic de Respuesta (Sanitización)"]
-    OutSchema --> ClientResp["HTTP 200/201 (Respuesta Limpia)"]
+    ClientReq["Petición HTTP (JSON Crudo)"] --> Parser["Validación de Esquema Pydantic"]
+    Parser -->|Regla incumplida: ej. is_pinned sin expires_at| ErrResp["HTTP 422 Unprocessable Entity (Detalle Exacto del Error)"]
+    Parser -->|Datos Válidos y Tipados| Domain["Capa de Servicios (Lógica de Dominio)"]
+    Domain --> DB["Persistencia en PostgreSQL"]
 ```
 
-### Separación de esquemas de entrada y salida
-
-En UPA Campus App se mantiene una separación estricta entre modelos de creación, actualización y respuesta:
+El siguiente esquema de la UPA Campus App muestra cómo los requisitos del modelo unificado de publicaciones (`/api/publications`) se convierten directamente en reglas de código:
 
 ```python
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime, timezone
+from typing import Literal
+from pydantic import BaseModel, Field, model_validator
 
-class PublicationBase(BaseModel):
-    title: str = Field(..., min_length=3, max_length=150, description="Título de la publicación")
-    content: str = Field(..., min_length=10, max_length=5000, description="Contenido de la publicación")
-    category: str = Field(default="general", max_length=50)
+class PublicationCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=200)
+    content: str = Field(..., min_length=1, max_length=10000)
+    post_type: Literal["MANUAL", "EVENT", "EMERGENCY_BANNER", "INSTAGRAM"] = "MANUAL"
+    media_type: Literal["NONE", "IMAGE", "VIDEO", "DOCUMENT"] = "NONE"
+    media_url: str | None = None
+    is_event: bool = False
+    event_date: datetime | None = None
+    is_pinned: bool = False
+    expires_at: datetime | None = None
+    reminder_value: int | None = Field(default=None, ge=1, le=365)
+    reminder_unit: Literal["MINUTES", "HOURS", "DAYS"] | None = None
+    target_groups: list[str] = Field(default_factory=list)
 
-class PublicationCreate(PublicationBase):
-    """Esquema para peticiones POST entrantes."""
-    pass
+    @model_validator(mode="after")
+    def enforce_specification_rules(self) -> "PublicationCreate":
+        # Regla 1 del pliego: Fijar arriba (is_pinned) exige fecha de vencimiento futura
+        if self.is_pinned:
+            if self.expires_at is None:
+                raise ValueError("Las publicaciones fijadas arriba exigen fecha de vencimiento (expires_at).")
+            if self.expires_at <= datetime.now(timezone.utc):
+                raise ValueError("La fecha de vencimiento (expires_at) debe estar en el futuro.")
 
-class PublicationResponse(PublicationBase):
-    """Esquema para respuestas salientes con metadatos del sistema."""
-    id: int
-    author_id: int
-    created_at: datetime
-    updated_at: datetime | None = None
+        # Regla 2 del pliego: Los eventos de calendario requieren fecha de realización
+        if self.is_event and self.event_date is None:
+            raise ValueError("Los eventos de calendario requieren fecha y hora (event_date).")
 
-    model_config = ConfigDict(from_attributes=True)
+        return self
 ```
 
-### Validación automática y diagnóstico preciso
-
-Si un cliente envía datos incorrectos (por ejemplo, un título con menos de 3 caracteres), FastAPI cancela la ejecución antes de invocar la lógica interna y genera una respuesta de error normalizada:
-
-```json
-{
-  "detail": [
-    {
-      "type": "string_too_short",
-      "loc": ["body", "title"],
-      "msg": "String should have at least 3 characters",
-      "input": "Hi"
-    }
-  ]
-}
-```
-
-El esquema de respuesta (`PublicationResponse`) garantiza además que campos confidenciales de base de datos nunca se expongan al cliente.
+Si un cliente defectuoso intenta enviar una publicación fijada sin `expires_at`, FastAPI rechaza la llamada automáticamente con `HTTP 422 Unprocessable Entity`. Los datos inconsistentes jamás llegan a la base de datos.
 
 ---
 
-## Arquitectura por capas en el backend: Separación de responsabilidades
+## Arquitectura en Tres Capas dentro del Backend
 
-A medida que los sistemas empresariales crecen, resulta indispensable separar responsabilidades técnicas (Separation of Concerns). UPA Campus App implementa una arquitectura en tres capas:
+Cuando se genera código con asistentes de IA sin una estructura clara, es común terminar con rutas HTTP, validaciones de permisos, llamadas a Google y consultas SQL mezcladas dentro de un mismo archivo. Al cambiar cualquier requisito del pliego, el código se rompe en cadena.
+
+Por ello, la UPA Campus App divide el backend en tres capas con responsabilidades estrictas:
 
 ```mermaid
 flowchart TD
-    subgraph PresentationLayer["1. Capa de Rutas y API (FastAPI Routers)"]
-        Router["Rutas de endpoints, métodos HTTP, enlace con Pydantic"]
+    subgraph PresentationLayer["1. Capa de Enrutamiento (Endpoints FastAPI)"]
+        Router["Verbos HTTP, Códigos de Estado, Control OAuth/JWT, Esquemas Pydantic"]
     end
-    subgraph BusinessLayer["2. Capa de Servicios (Lógica de Negocio)"]
-        Service["Reglas de dominio, autorizaciones, orquestación"]
+    subgraph BusinessLayer["2. Capa de Servicios (Lógica de Negocio e Integraciones)"]
+        Service["Bloqueo Solo Lectura Instagram, Sync Google Classroom, Caché de Directorio"]
     end
-    subgraph PersistenceLayer["3. Capa de Datos (Repositorios y ORM)"]
-        Repo["Consultas SQLAlchemy, transacciones, gestión de sesiones"]
+    subgraph PersistenceLayer["3. Capa de Repositorio (Acceso a Datos)"]
+        Repo["Consultas SQLAlchemy, Transacciones, Bitácora de Auditoría"]
         DB[(PostgreSQL)]
     end
 
-    Router -->|Invoca| Service
-    Service -->|Utiliza| Repo
-    Repo -->|Lee / Escribe| DB
+    Router -->|DTO Validado| Service
+    Service -->|Orden de Dominio| Repo
+    Repo -->|SQL Parametrizado| DB
 ```
 
-### Responsabilidades por capa
+### Cómo la Capa de Servicios Ejecuta el Pliego Funcional
 
-1. **Capa de Rutas (`api/v1/endpoints/`):**
-   * Define rutas URL, métodos HTTP y códigos de estado.
-   * Valida cabeceras de autenticación y vincula cargas con esquemas Pydantic.
-   * Transfiere objetos de transferencia de datos (DTOs) a la capa de servicios.
-   * No contiene consultas directas a base de datos ni lógica de negocio.
+Mientras Pydantic valida la estructura de los datos entrantes, la **Capa de Servicios** protege las reglas de negocio que dependen del estado almacenado o de integraciones externas:
 
-2. **Capa de Servicios (`services/`):**
-   * Centraliza las reglas de negocio del dominio.
-   * Evalúa condiciones operativas: ¿El usuario superó el límite de publicaciones? ¿El semestre académico está activo?
-   * Coordina múltiples repositorios y llamadas a servicios auxiliares.
-   * Es completamente independiente del protocolo HTTP.
-
-3. **Capa de Repositorios (`repositories/` y `models/`):**
-   * Gestiona el acceso a la base de datos mediante SQLAlchemy ORM.
-   * Evita la dispersión de consultas SQL por el código fuente.
-   * Administra transacciones, filtros, uniones y confirmaciones de cambios.
-
-### Implementación con inyección de dependencias
-
-La interacción entre las tres capas se refleja en la creación de publicaciones:
+#### 1. Bloqueo de Solo Lectura (`Read-Only`) para Publicaciones de Instagram
+¿Por qué la especificación funcional prohíbe editar el texto o la imagen de las publicaciones importadas desde Instagram? Porque un proceso automático sincroniza periódicamente la cuenta oficial de la universidad. La capa de servicios blinda esta regla en el servidor:
 
 ```python
-# 1. Capa de Rutas (api/v1/endpoints/publications.py)
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.publication import PublicationCreate, PublicationResponse
-from app.services.publication_service import PublicationService
-from app.core.security import get_current_user
-
-router = APIRouter(prefix="/publications", tags=["Publications"])
-
-@router.post("/", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED)
-def create_publication(
-    payload: PublicationCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    service = PublicationService(db)
-    return service.create_for_user(payload, user_id=current_user.id)
-```
-
-```python
-# 2. Capa de Servicios (services/publication_service.py)
 from fastapi import HTTPException, status
-from app.repositories.publication_repository import PublicationRepository
-from app.schemas.publication import PublicationCreate
 
-class PublicationService:
-    def __init__(self, db):
-        self.repo = PublicationRepository(db)
-
-    def create_for_user(self, payload: PublicationCreate, user_id: int):
-        # Regla de negocio: control de frecuencia de publicaciones
-        recent_count = self.repo.count_recent_by_user(user_id, minutes=5)
-        if recent_count >= 3:
+def update_publication(db_post, payload, current_user):
+    # Regla del pliego: Las publicaciones de Instagram son de solo lectura en texto y medios
+    if db_post.post_type == "INSTAGRAM":
+        if payload.title != db_post.title or payload.content != db_post.content:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Límite de publicaciones alcanzado. Espere unos minutos.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Las publicaciones sincronizadas de Instagram son de solo lectura.",
             )
-        return self.repo.create(payload, author_id=user_id)
+    # Los metadatos internos del campus (como fijar arriba con vencimiento) sí pueden actualizarse
+    db_post.is_pinned = payload.is_pinned
+    db_post.expires_at = payload.expires_at
+    return db_post
 ```
 
-```python
-# 3. Capa de Repositorios (repositories/publication_repository.py)
-from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from app.models.publication import Publication
-from app.schemas.publication import PublicationCreate
+#### 2. Caché Local de Google Workspace Directory para el Filtro Instantáneo
+En el portal Web-Admin, marketing segmenta los comunicados eligiendo destinatarios sobre una lista plana ordenada alfabéticamente de grupos reales de Google Workspace (`@example-campus.edu`). Si el backend consultara en vivo la API de Google Admin Directory cada vez que un editor abre la pantalla, la carga demoraría segundos y agotaría las cuotas de Google. Por ello, el servicio mantiene una caché local en el backend, ordena los grupos alfabéticamente y responde al filtro instantáneo en menos de 5 milisegundos.
 
-class PublicationRepository:
-    def __init__(self, db: Session):
-        self.db = db
-
-    def count_recent_by_user(self, user_id: int, minutes: int) -> int:
-        threshold = datetime.now(timezone.utc) - timedelta(minutes=minutes)
-        return self.db.query(Publication).filter(
-            Publication.author_id == user_id,
-            Publication.created_at >= threshold
-        ).count()
-
-    def create(self, payload: PublicationCreate, author_id: int) -> Publication:
-        db_obj = Publication(
-            title=payload.title,
-            content=payload.content,
-            category=payload.category,
-            author_id=author_id,
-        )
-        self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
-        return db_obj
-```
-
-Este diseño desacoplado garantiza mantenibilidad: Modificaciones en las tablas de base de datos afectan únicamente a los repositorios, mientras que los cambios en validaciones se gestionan de forma aislada en los esquemas Pydantic.
+#### 3. Federación de Identidad, Sincronización con Google Classroom y Privilegio Mínimo
+* **Validación Estricta de Dominio:** Durante el inicio de sesión con Google OAuth 2.0, el backend verifica criptográficamente el token y rechaza cualquier correo que no pertenezca al dominio institucional (`@example-campus.edu`).
+* **Sincronización en Vivo con Google Classroom:** Con el token OAuth autorizado por el estudiante, el servicio `ClassroomService` importa sus entregas académicas pendientes y las unifica con los eventos del campus dentro del módulo Agenda.
+* **Principio de Privilegio Mínimo:** Las cuentas nuevas nacen sin permisos administrativos preseleccionados, y cada endpoint de escritura bajo `/api/publications` o `/api/roles` exige el permiso específico mediante inyección de dependencias (`Depends(require_permission)`).
 
 ---
 
 ## Conclusiones
 
-1. **Seguridad y robustez mediante contratos tipados:** La integración de FastAPI y Pydantic establece una validación declarativa en el perímetro. Las cargas inválidas se descartan antes de procesar lógica interna, reduciendo vulnerabilidades y estados inconsistentes.
-2. **Eficiencia en la integración gracias a OpenAPI:** La creación automatizada de esquemas OpenAPI facilita la sincronización entre equipos de desarrollo frontend y backend, acelerando las pruebas de interfaz.
-3. **Mantenibilidad mediante desacoplamiento por capas:** La división modular en rutas, servicios y repositorios aísla el transporte HTTP, las reglas de dominio y la persistencia de datos. El sistema permanece modular y preparado para crecer.
+1. **El Backend es la Única Frontera Real de Seguridad:** Como la interfaz del cliente siempre puede manipularse desde fuera, la autenticación, el control de roles y la validación de datos deben ejecutarse sin excepciones en el servidor.
+2. **Pydantic Convierte la Especificación en Código Ejecutable:** Reglas como la vigencia obligatoria al fijar avisos arriba (`is_pinned` exige `expires_at`) operan como validadores automáticos que detienen peticiones inválidas con `HTTP 422`.
+3. **Capas Limpias y Caché Inteligente:** Separar enrutadores, servicios y repositorios mantiene el sistema ordenado, protege las publicaciones de Instagram frente a sobrescrituras accidentales y acelera la segmentación de grupos de Google Workspace mediante caché local.
