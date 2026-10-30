@@ -1,6 +1,7 @@
+{{- $currentLang := .Lang -}}
 {{- $seriesId := .Params.series -}}
 {{- $currentPart := .Params.series_part -}}
-{{- $seriesPages := where .Site.RegularPages "Params.series" $seriesId -}}
+{{- $seriesPages := where (where .Site.RegularPages "Lang" $currentLang) "Params.series" $seriesId -}}
 {{- $chapters := sort (where $seriesPages "Params.series_part" "!=" nil) "Params.series_part" "asc" -}}
 {{- $totalChapters := len $chapters -}}
 {{- $hubPageList := where $seriesPages "Params.series_hub" true -}}
@@ -29,14 +30,14 @@
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
       </svg>
       <span>
-        {{- if eq .Lang "de" }}Serie: {{ with $hubPage }}{{ .Params.series_title | default .Title }}{{ else }}Architektur{{ end }} · Kapitel {{ $currentPart }} von {{ $totalChapters }}
-        {{- else if eq .Lang "es" }}Serie: {{ with $hubPage }}{{ .Params.series_title | default .Title }}{{ else }}Arquitectura{{ end }} · Capítulo {{ $currentPart }} de {{ $totalChapters }}
+        {{- if eq $currentLang "de" }}Serie: {{ with $hubPage }}{{ .Params.series_title | default .Title }}{{ else }}Architektur{{ end }} · Kapitel {{ $currentPart }} von {{ $totalChapters }}
+        {{- else if eq $currentLang "es" }}Serie: {{ with $hubPage }}{{ .Params.series_title | default .Title }}{{ else }}Arquitectura{{ end }} · Capítulo {{ $currentPart }} de {{ $totalChapters }}
         {{- else }}Series: {{ with $hubPage }}{{ .Params.series_title | default .Title }}{{ else }}Architecture{{ end }} · Chapter {{ $currentPart }} of {{ $totalChapters }}
         {{- end }}
       </span>
     </div>
-    {{- with $hubPage }}
-    <a href="{{ .RelPermalink }}" class="series-nav-hub-link">
+    {{- if $hubPage }}
+    <a href="{{ $hubPage.RelPermalink | relLangURL }}" class="series-nav-hub-link">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="7" height="7"></rect>
         <rect x="14" y="3" width="7" height="7"></rect>
@@ -44,8 +45,8 @@
         <rect x="3" y="14" width="7" height="7"></rect>
       </svg>
       <span>
-        {{- if eq $.Lang "de" }}Serienübersicht
-        {{- else if eq $.Lang "es" }}Índice de la serie
+        {{- if eq $currentLang "de" }}Serienübersicht
+        {{- else if eq $currentLang "es" }}Índice de la serie
         {{- else }}Series overview
         {{- end }}
       </span>
@@ -55,11 +56,11 @@
 
   <div class="series-nav-top-links">
     {{- if $prevPage }}
-    <a href="{{ $prevPage.RelPermalink }}" class="series-nav-btn prev" rel="prev">
+    <a href="{{ $prevPage.RelPermalink | relLangURL }}" class="series-nav-btn prev" rel="prev">
       <span aria-hidden="true">&larr;</span>
       <span>
-        {{- if eq .Lang "de" }}Vorheriges Kapitel
-        {{- else if eq .Lang "es" }}Capítulo anterior
+        {{- if eq $currentLang "de" }}Vorheriges Kapitel
+        {{- else if eq $currentLang "es" }}Capítulo anterior
         {{- else }}Previous chapter
         {{- end }}
       </span>
@@ -69,10 +70,10 @@
     {{- end }}
 
     {{- if $nextPage }}
-    <a href="{{ $nextPage.RelPermalink }}" class="series-nav-btn next" rel="next">
+    <a href="{{ $nextPage.RelPermalink | relLangURL }}" class="series-nav-btn next" rel="next">
       <span>
-        {{- if eq .Lang "de" }}Nächstes Kapitel
-        {{- else if eq .Lang "es" }}Siguiente capítulo
+        {{- if eq $currentLang "de" }}Nächstes Kapitel
+        {{- else if eq $currentLang "es" }}Siguiente capítulo
         {{- else }}Next chapter
         {{- end }}
       </span>

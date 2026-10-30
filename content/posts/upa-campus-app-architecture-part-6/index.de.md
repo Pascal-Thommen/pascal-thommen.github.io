@@ -1,8 +1,8 @@
 ---
-title: "UPA Campus App (Kapitel 6): Datenbank und Persistenz"
+title: "UPA Campus App (Kapitel 6): Datenbankdesign, Constraints und Migrationen"
 date: 2026-10-30T16:50:00Z
-description: "Relationale Datenmodellierung in PostgreSQL: Wie die UPA Campus App das vereinheitlichte Publikationsmodell, 1-Klick-RSVP, eindeutige Lesezähler, Video-Uploads und Alembic-Migrationen umsetzt."
-summary: "Warum entscheidet das Datenmodell über die Lebensdauer jeder Web-App? Kapitel 6 erklärt das Unified Post Schema, Datenbank-Constraints gegen Doppelbuchungen, die Auslagerung von Medien und Alembic."
+description: "Warum ist das Datenbankschema das langlebigste Fundament jeder Web-Applikation? Kapitel 6 erklärt das relationale Datenmodell in PostgreSQL, Unique-Constraints, Medien-Streaming und Alembic."
+summary: "Wie verhindert man Datensilos, Doppelbuchungen und langsame Datenbank-Backups? Kapitel 6 zeigt das relationale PostgreSQL-Schema, die Auslagerung großer Mediendateien und Alembic-Migrationen."
 tags: ["Datenbank", "PostgreSQL", "SQLAlchemy", "Alembic", "Persistenz", "Softwarearchitektur", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -13,27 +13,27 @@ mermaid: true
 draft: false
 series: "upa-campus-app"
 series_part: 6
-series_part_title: "Datenbank und Persistenz"
+series_part_title: "Datenbankdesign, Constraints und Migrationen"
 hiddenInList: true
 ---
 
-Benutzeroberflächen lassen sich in wenigen Stunden austauschen, doch das Datenmodell bildet das bleibende Rückgrat jeder Software. Gerade beim KI-gestützten Programmieren (Vibe-Coding) entsteht häufig der Fehler, für jede neue Bildschirmansicht spontan eine eigene Tabelle anzulegen, bis sich Daten widersprechen. Die UPA Campus App verfolgt in PostgreSQL den gegenteiligen Ansatz: Ein präzise normalisiertes, vereinheitlichtes Datenmodell sichert alle Campus-Prozesse mit vollen ACID-Garantien ab. Dieses sechste Kapitel zeigt, wie sich jede Anforderung des Pflichtenhefts in relationalen Tabellen, eindeutigen Datenbank-Constraints, einem entkoppelten Medienspeicher für Bilder, Videos und PDFs sowie versionierten Alembic-Migrationen widerspiegelt.
+Benutzeroberflächen lassen sich in wenigen Tagen umgestalten, doch das Datenbankschema bildet das bleibende Rückgrat jeder Software. Gerade beim schnellen Prototypenbau mit KI-Assistenten (Vibe-Coding) entsteht oft der Fehler, für jedes neue Formular spontan eine eigene Tabelle anzulegen, bis dieselbe Veranstaltung an drei Stellen mit unterschiedlichen Uhrzeiten gespeichert ist. Dieses sechste und letzte Kapitel zeigt, wie die UPA Campus App ihren gesamten Datenbestand in PostgreSQL über sechs präzise abgestimmte Kerntabellen abbildet, Doppelbuchungen auf Speicherebene ausschließt, große Mediendateien aus dem Datenbank-Arbeitsspeicher fernhält und Schema-Änderungen mit Alembic sicher ausrollt.
 
 ---
 
-## Das relationale Datenmodell als Blaupause des Pflichtenhefts
+## Das Entity-Relationship-Diagramm: Sechs Tabellen für den gesamten Campus
 
-Warum setzt die UPA Campus App auf PostgreSQL und wie hängen die sechs Kerntabellen zusammen? Das Entity-Relationship-Diagramm (ER-Diagramm) zeigt die gesamte Datenarchitektur auf einen Blick:
+Anstatt Nachrichten, Kalendertermine, Notfall-Banner und Instagram-Beiträge in getrennte Datensilos aufzuspalten, führt das Datenmodell in PostgreSQL alle Fäden um die zentrale Tabelle `POST` zusammen:
 
 ```mermaid
 erDiagram
-    USER ||--o{ POST : "verfasst"
-    USER ||--o{ EVENT_REGISTRATION : "meldet_an"
-    USER ||--o{ POST_VIEW : "liest_eindeutig"
-    USER ||--o{ DEVICE_TOKEN : "registriert"
-    USER ||--o{ ADMIN_AUDIT_LOG : "protokolliert"
-    POST ||--o{ EVENT_REGISTRATION : "besitzt"
-    POST ||--o{ POST_VIEW : "zaehlt"
+    USER ||--o{ POST : "erstellt"
+    USER ||--o{ EVENT_REGISTRATION : "bucht"
+    USER ||--o{ POST_VIEW : "liest"
+    USER ||--o{ DEVICE_TOKEN : "empfaengt_push"
+    USER ||--o{ ADMIN_AUDIT_LOG : "verursacht"
+    POST ||--o{ EVENT_REGISTRATION : "zaehlt_teilnehmer"
+    POST ||--o{ POST_VIEW : "misst_reichweite"
 
     USER {
         int id PK
@@ -86,79 +86,65 @@ erDiagram
     }
 ```
 
-### Warum dieses Datenmodell die Anforderungen des Pflichtenhefts perfekt trägt
+### Warum dieses Tabellendesign Widersprüche strukturell verhindert
 
-1. **Die Tabelle `POST` als Single Source of Truth:** Statt getrennte Tabellen für Nachrichten, Kalendertermine, Notfall-Banner und Instagram-Posts zu pflegen, vereint die Tabelle `posts` alle Publikationsformen. Über `is_event` und `event_date` erscheint ein Beitrag automatisch im Agenda-Kalender. Über `is_pinned` und `expires_at` wird er zeitlich begrenzt oben angeheftet. Über `reminder_value` und `reminder_unit` (`MINUTES`, `HOURS`, `DAYS`) steuert er Erinnerungen, und über `external_id` erkennt der Hintergrund-Sync bereits importierte Instagram-Beiträge wieder.
-2. **Doppelbuchungs-Schutz bei der 1-Klick-Anmeldung (`EVENT_REGISTRATION`):** Wenn ein Studierender im Hörsaal bei schlechtem Empfang zweimal kurz hintereinander auf "Teilnehmen" tippt, treffen zwei parallele Requests im Server ein. Ein Datenbank-Constraint (`UniqueConstraint("post_id", "user_id")`) garantiert auf Speicherebene, dass exakt ein Anmeldedatensatz angelegt wird.
-3. **Echte Reichweitenmessung statt Klick-Inflation (`POST_VIEW`):** Auch die Tabelle `post_views` besitzt einen zusammengesetzten Eindeutigkeitsschlüssel aus `post_id` und `user_id`. Öffnet ein Studierender denselben Beitrag zehnmal, zählt PostgreSQL ihn trotzdem nur als einen eindeutigen Leser. So erhält das Marketing-Team im Web-Admin verlässliche Lesestatistiken.
-4. **Kaskadierende Bereinigung (`ON DELETE CASCADE`):** Wird eine abgelaufene Veranstaltung gelöscht, räumt PostgreSQL zugehörige Anmeldungen (`event_registrations`) und Lesezähler (`post_views`) automatisch ab, sodass niemals verwaiste Datensätze zurückbleiben.
+1. **Ein Datensatz für Feed und Kalender (`POST`):** Ein Gastvortrag ist gleichzeitig eine Ankündigung mit Plakat im Feed und ein buchbarer Termin im Kalender. Weil beide Ansichten auf dieselbe Tabellenzeile zugreifen (gesteuert über `is_event` und `event_date`), existiert im gesamten System nur eine einzige Quelle der Wahrheit. Zusätzlich speichert `external_id` die Originalkennung importierter Instagram-Beiträge, sodass der Hintergrund-Sync bereits vorhandene Posts sofort wiedererkennt.
+2. **Schutz vor Doppelbuchungen bei schlechtem Empfang (`EVENT_REGISTRATION`):** Tippt ein Studierender bei langsamem Mobilfunknetz zweimal kurz hintereinander auf "Teilnehmen", erreichen zwei fast gleichzeitige Anfragen den Server. Ein zusammengesetzter Eindeutigkeitsschlüssel (`UniqueConstraint("post_id", "user_id")`) in PostgreSQL garantiert, dass die Datenbank den zweiten Schreibversuch abweist und jeder Studierende höchstens einmal auf der Teilnehmerliste steht.
+3. **Echte Lesereichweite statt Klick-Inflation (`POST_VIEW`):** Derselbe zusammengesetzte Schlüssel aus `post_id` und `user_id` kommt auch in der Tabelle `post_views` zum Einsatz. Öffnet eine Person denselben Beitrag zehnmal, zählt die Datenbank dennoch genau einen erreichten Studierenden. So erhält das Marketing-Team belastbare Kennzahlen zur tatsächlichen Reichweite.
+4. **Automatische Bereinigung über `ON DELETE CASCADE`:** Wird eine abgelaufene Ankündigung gelöscht, entfernt PostgreSQL verknüpfte Anmeldungen und Lesezähler in derselben Transaktion automatisch, sodass keine verwaisten Datensätze zurückbleiben.
 
 ---
 
-## Objekt-Relationales Mapping (ORM) und SQL-Injection-Schutz
+## Typsichere Abbildung mit SQLAlchemy und Schutz vor SQL-Injection
 
-Im Python-Backend übersetzt **SQLAlchemy** die relationalen Tabellen in typsichere Python-Klassen und schützt das System gleichzeitig vor SQL-Injection:
+Im Python-Backend übersetzt das Object-Relational Mapping (**SQLAlchemy**) die Tabellenstruktur in klar definierte Klassen:
 
 ```python
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-class Post(Base):
-    __tablename__ = "posts"
+class EventRegistration(Base):
+    __tablename__ = "event_registrations"
+    __table_args__ = (
+        UniqueConstraint("post_id", "user_id", name="uq_event_registration_post_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200), nullable=False)
-    content = Column(Text, nullable=True)
-    post_type = Column(String(50), default="MANUAL", nullable=False)
-    media_type = Column(String(20), default="NONE", nullable=False)
-    media_url = Column(Text, nullable=True)
-
-    is_event = Column(Boolean, default=False, nullable=False)
-    event_date = Column(DateTime(timezone=True), nullable=True)
-    is_pinned = Column(Boolean, default=False, nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-
-    reminder_value = Column(Integer, nullable=True)
-    reminder_unit = Column(String(20), nullable=True)
-    external_id = Column(String(120), unique=True, nullable=True)
-
-    author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    registrations = relationship("EventRegistration", back_populates="post", cascade="all, delete-orphan")
 ```
 
-Weil SQLAlchemy bei jeder Abfrage den SQL-Befehl und die Benutzereingabe strikt voneinander trennt (parametrisierte Prepared Statements), wird ein übergebener Suchbegriff von PostgreSQL ausschließlich als reiner Textwert behandelt und niemals als ausführbarer SQL-Befehl interpretiert.
+Neben der übersichtlichen Struktur liefert SQLAlchemy einen entscheidenden Sicherheitsvorteil: Alle Datenbankabfragen werden als **parametrisierte Prepared Statements** an PostgreSQL übergeben. Selbst wenn ein Nutzer in ein Suchfeld SQL-Steuerzeichen eingibt, behandelt PostgreSQL die Eingabe strikt als harmlosen Textwert und führt ihn zu keinem Zeitpunkt als Datenbankbefehl aus.
 
 ---
 
-## Speicherstrategie für den einheitlichen Medien-Upload (Bilder, Videos und PDFs)
+## Warum Bilder, Videos und PDFs nicht in Datenbankspalten gehören
 
-Das Pflichtenheft sieht im Beitrags-Editor ein einziges, vereinheitlichtes Upload-Feld für Veranstaltungsplakate (`JPG`, `PNG`, `WEBP`), kurze Videos (`MP4`, `WEBM`) und Dokumente (`PDF`) vor. Warum speichert man diese Dateien nicht einfach als Binärdaten (BLOB) direkt in einer Tabellenspalte von PostgreSQL?
+Das Pflichtenheft erlaubt im Redaktions-Editor das Hochladen von Plakaten (`JPG`, `PNG`, `WEBP`), kurzen Videos (`MP4`, `WEBM`) und Dokumenten (`PDF`). Würde man diese mehrere Megabyte großen Dateien direkt als Binärblock (`BLOB`) in einer Spalte von PostgreSQL ablegen, hätte das zwei gravierende Nachteile:
+* **Verdrängung des Datenbank-Arbeitsspeichers (`Shared Buffers`):** PostgreSQL hält häufig genutzte Tabellenindizes im schnellen RAM vor. Große Videoblöcke würden diese Indizes aus dem Speicher verdrängen und sämtliche Suchabfragen ausbremsen.
+* **Aufgeblähte Backups:** Ein tägliches Backup der reinen Text- und Strukturdaten ist wenige Megabyte klein und in Sekunden gesichert.
 
-1. **Schutz des Datenbank-Arbeitsspeichers (`Shared Buffers`):** PostgreSQL hält häufig gelesene Tabellen- und Indexseiten im schnellen Arbeitsspeicher (RAM) vor. Würde die Datenbank mehrere Megabyte große `MP4`-Videos aus Tabellenzeilen lesen, würden diese Videoblöcke die wichtigen Suchindizes aus dem RAM verdrängen und alle Abfragen verlangsamen.
-2. **Schnelle Backups und direktes HTTP-Streaming:** Ohne Binärballast bleibt das tägliche Datenbank-Backup wenige Megabyte klein, während Nginx und der Static-Handler Videodateien direkt vom Dateisystem per HTTP-Chunk-Streaming an Smartphones ausliefern können.
+Die Architektur teilt den Speichervorgang deshalb sauber auf:
 
 ```mermaid
-flowchart TD
-    Client["Web-Admin Editor"] -->|1. Multipart Upload (Bild / MP4 / PDF)| API["FastAPI (/api/media/upload)"]
-    API -->|2. MIME-Typ prüfen & UUIDv4-Dateinamen erzeugen| Storage["Host Volume (/uploads/uuid.mp4)"]
-    API -->|3. Pfad zurückgeben (/uploads/uuid.mp4)| Client
-    Client -->|4. POST /api/publications mit media_url & media_type| API
-    API -->|5. Nur schlanken Textpfad speichern| DB[("PostgreSQL (Tabelle posts)")]
+flowchart LR
+    Editor["Web-Admin Editor"] -->|1. Datei senden (Bild / MP4 / PDF)| UploadAPI["FastAPI (/api/media/upload)"]
+    UploadAPI -->|2. 64-KB-Streaming mit UUIDv4-Name| Volume[("Dateisystem-Volume\n/app/uploads/a8f9...mp4")]
+    UploadAPI -->|3. Kurzen Dateipfad speichern| DB[("PostgreSQL Tabelle posts\nmedia_url = '/uploads/a8f9...mp4'")]
 ```
 
-Der Upload-Endpunkt prüft den MIME-Typ, vergibt einen kryptografisch zufälligen Dateinamen (`UUIDv4`) gegen Pfad-Manipulationen und schreibt die Datei in speicherschonenden 64-KB-Blöcken auf das persistente Volume:
+Der Upload-Endpunkt prüft das Dateiformat, vergibt einen zufälligen Dateinamen (`UUIDv4`) gegen Namenskonflikte und schreibt die Datei in speicherschonenden 64-Kilobyte-Blöcken auf das Medien-Volume, während in der Datenbanktabelle `posts` lediglich der kurze Textpfad hinterlegt wird:
 
 ```python
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 
 router = APIRouter(prefix="/api/media", tags=["Media"])
 
-ALLOWED_MEDIA = {
+ALLOWED_TYPES = {
     "image/jpeg": (".jpg", "IMAGE"),
     "image/png": (".png", "IMAGE"),
     "image/webp": (".webp", "IMAGE"),
@@ -168,39 +154,29 @@ ALLOWED_MEDIA = {
 }
 
 @router.post("/upload")
-async def upload_media(file: UploadFile):
-    if file.content_type not in ALLOWED_MEDIA:
+async def upload_media_file(file: UploadFile):
+    if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Dateiformat nicht erlaubt. Unterstützt werden JPG, PNG, WEBP, MP4, WEBM und PDF.",
+            detail="Unterstützt werden JPG, PNG, WEBP, MP4, WEBM und PDF.",
         )
 
-    extension, media_category = ALLOWED_MEDIA[file.content_type]
-    unique_filename = f"{uuid.uuid4().hex}{extension}"
-    target_path = Path("/app/uploads") / unique_filename
+    ext, category = ALLOWED_TYPES[file.content_type]
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    dest = Path("/app/uploads") / safe_name
 
-    with open(target_path, "wb") as buffer:
+    with open(dest, "wb") as out_file:
         while chunk := await file.read(64 * 1024):
-            buffer.write(chunk)
+            out_file.write(chunk)
 
-    return {
-        "url": f"/uploads/{unique_filename}",
-        "media_type": media_category,
-    }
+    return {"url": f"/uploads/{safe_name}", "media_type": category}
 ```
 
 ---
 
-## Kontrollierte Schema-Evolution mit Alembic
+## Kontrollierte Weiterentwicklung des Schemas mit Alembic
 
-Wenn während des Semesters im Pflichtenheft neue Anforderungen hinzukommen (etwa das verpflichtende Ablaufdatum `expires_at` oder die einstellbaren Erinnerungen `reminder_value` und `reminder_unit`), darf man die Produktivdatenbank weder löschen noch manuell per Konsole umbauen. **Alembic** verwaltet jede Änderung am Datenbankschema wie Git-Commits in nummerierten Migrationsdateien:
-
-```mermaid
-flowchart LR
-    Rev1["001: Initial Schema (users, posts)"] --> Rev2["002: Classroom OAuth Token"]
-    Rev2 --> Rev3["003: Views, RSVP & Audit Logs"]
-    Rev3 --> Rev4["004: Unified Post & Expiry Fields"]
-```
+Wächst das Pflichtenheft im Laufe eines Semesters um neue Funktionen (wie die Erinnerungsfelder `reminder_value` und `reminder_unit`), darf eine laufende Produktivdatenbank weder gelöscht noch per Hand verändert werden. **Alembic** versioniert jede Strukturänderung an den Tabellen in fortlaufenden Migrationsdateien:
 
 ```python
 """add unified post expiry and reminder columns
@@ -227,12 +203,12 @@ def downgrade() -> None:
     op.drop_column("posts", "media_type")
 ```
 
-Beim Start des Backend-Containers führt das Startskript automatisch `alembic upgrade head` aus, bevor FastAPI die erste Anfrage entgegennimmt. Dadurch sind Datenbankschema und Python-Code auf jedem Entwicklerrechner und auf dem Produktivserver zu jeder Sekunde synchron.
+Beim Start des Backend-Containers prüft `alembic upgrade head` automatisch den aktuellen Stand der Datenbank und spielt fehlende Erweiterungen deterministisch ein, ohne vorhandene Einträge anzutasten.
 
 ---
 
-## Gesamtfazit der Serie
+## Gesamtfazit zum Abschluss der Serie
 
-1. **Das Datenmodell sichert das Pflichtenheft im Kern ab:** Die vereinheitlichte Tabelle `posts` verhindert Datensilos zwischen Feed und Kalender, während `UniqueConstraint`-Regeln in PostgreSQL Doppelbuchungen bei Events und künstlich aufgeblähte Lesezähler unmöglich machen.
-2. **Metadaten in die Datenbank, Binärdateien auf das Volume:** Durch die Auslagerung von Bildern, Videos (`MP4`/`WEBM`) und PDFs auf das Volume `uploads_data` bleibt der Arbeitsspeicher-Cache von PostgreSQL frei für schnelle Abfragen.
-3. **Vom Pflichtenheft zur Gesamtarchitektur:** Wer den Weg einer Anfrage vom verschlüsselten NetBird-Tunnel über den Nginx-Reverse-Proxy, den offline-fähigen Client, die Pydantic-Eingangskontrolle bis in die PostgreSQL-Transaktion durchdrungen hat, besitzt das mentale Werkzeug, um jede moderne Web-Applikation fundiert zu entwerfen und zu bauen.
+1. **Datenintegrität auf Speicherebene:** Die zentrale Tabelle `posts` verhindert widersprüchliche Daten zwischen Feed und Kalender, während `UniqueConstraint`-Regeln in PostgreSQL Doppelanmeldungen und verzerrte Lesezähler zuverlässig unterbinden.
+2. **Arbeitsteilung zwischen Datenbank und Dateisystem:** Strukturierte Metadaten liegen transaktionssicher in PostgreSQL, während große Bilder, Videos und PDFs auf dem Medien-Volume gespeichert werden, um den Datenbank-RAM schnell zu halten.
+3. **Das Gesamtbild moderner Web-Architektur:** Wer den Weg vom Pflichtenheft (Kapitel 1) über isolierte Docker-Container (Kapitel 2), geschützte WireGuard- und Reverse-Proxy-Wege (Kapitel 3), reaktionsschnelle Offline-Clients (Kapitel 4) und strenge Pydantic-Verträge (Kapitel 5) bis zur relationalen Datenbanktransaktion (Kapitel 6) nachvollzogen hat, besitzt das handwerkliche Rüstzeug, um eigene Web-Applikationen strukturiert zu planen und mit modernen Werkzeugen souverän umzusetzen.

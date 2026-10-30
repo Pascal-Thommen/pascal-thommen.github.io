@@ -1,8 +1,8 @@
 ---
-title: "UPA Campus App (Chapter 6): Database and Persistence"
+title: "UPA Campus App (Chapter 6): Database Design, Constraints, and Migrations"
 date: 2026-10-30T16:50:00Z
-description: "Relational Data Modeling in PostgreSQL: How the UPA Campus App implements the unified publication schema, 1-click RSVP constraints, unique read counters, video uploads, and Alembic migrations."
-summary: "Why does the data model determine the lifespan of every web app? Chapter 6 explains the unified post schema, database constraints against duplicate bookings, media storage decoupling, and Alembic."
+description: "Why is the database schema the most enduring foundation of any web application? Chapter 6 explains the relational PostgreSQL model, unique constraints, media streaming, and Alembic migrations."
+summary: "How do you prevent data silos, duplicate event bookings, and bloated database backups? Chapter 6 covers the PostgreSQL schema, offloading binary media, and Alembic schema evolution."
 tags: ["Database", "PostgreSQL", "SQLAlchemy", "Alembic", "Persistence", "Software Architecture", "Enterprise Systems"]
 categories: ["Architecture", "Enterprise Systems"]
 author: "Pascal Thommen"
@@ -13,27 +13,27 @@ mermaid: true
 draft: false
 series: "upa-campus-app"
 series_part: 6
-series_part_title: "Database and Persistence"
+series_part_title: "Database Design, Constraints, and Migrations"
 hiddenInList: true
 ---
 
-User interfaces can be redesigned in a weekend, but the data model forms the permanent spine of any software system. A frequent pitfall in rapid AI-assisted coding (vibe-coding) is spinning up a separate database table for every new screen until duplicated data falls out of sync. In PostgreSQL, the UPA Campus App takes the opposite path: a normalized, unified relational data model backs every campus workflow with strict ACID guarantees. This sixth chapter shows how every requirement in the functional specification maps directly to relational tables, uniqueness constraints, decoupled media storage for images, videos, and PDFs, and version-controlled Alembic migrations.
+User interfaces can be redesigned in a few days, but the database schema forms the lasting backbone of any software system. When prototyping rapidly with AI coding assistants (vibe-coding), a common mistake is spinning up a separate table for every new screen until the same campus event exists in three places with conflicting timestamps. This sixth and final chapter shows how the UPA Campus App models its entire domain in PostgreSQL across six cohesive tables, eliminates duplicate bookings at the storage engine level, keeps large video and PDF files out of database memory buffers, and evolves the schema safely using Alembic.
 
 ---
 
-## The Relational Data Model as the Blueprint of the Specification
+## The Entity-Relationship Diagram: Six Tables Powering the Entire Campus
 
-Why does the UPA Campus App rely on PostgreSQL, and how do its six core tables fit together? The Entity-Relationship (ER) diagram captures the entire persistence architecture at a glance:
+Rather than splitting announcements, calendar events, emergency alerts, and Instagram imports into separate data silos, the PostgreSQL schema centers around a unified `POST` table:
 
 ```mermaid
 erDiagram
     USER ||--o{ POST : "authors"
-    USER ||--o{ EVENT_REGISTRATION : "registers"
-    USER ||--o{ POST_VIEW : "views_uniquely"
-    USER ||--o{ DEVICE_TOKEN : "registers_device"
+    USER ||--o{ EVENT_REGISTRATION : "books"
+    USER ||--o{ POST_VIEW : "reads"
+    USER ||--o{ DEVICE_TOKEN : "receives_push"
     USER ||--o{ ADMIN_AUDIT_LOG : "triggers"
-    POST ||--o{ EVENT_REGISTRATION : "has"
-    POST ||--o{ POST_VIEW : "counts"
+    POST ||--o{ EVENT_REGISTRATION : "tracks_attendees"
+    POST ||--o{ POST_VIEW : "measures_reach"
 
     USER {
         int id PK
@@ -86,79 +86,65 @@ erDiagram
     }
 ```
 
-### Why This Schema Directly Enforces the Functional Specification
+### How This Schema Prevents Data Inconsistencies by Design
 
-1. **The `POST` Table as a Single Source of Truth:** Instead of maintaining disconnected tables for news articles, calendar events, emergency banners, and Instagram imports, the `posts` table unifies every publication format. Setting `is_event` and `event_date` surfaces an item automatically inside the Agenda calendar. Setting `is_pinned` and `expires_at` pins it to the top of the feed until expiration. Setting `reminder_value` and `reminder_unit` (`MINUTES`, `HOURS`, `DAYS`) schedules notifications, while `external_id` prevents duplicate imports during periodic Instagram synchronization.
-2. **Duplicate-Booking Prevention on 1-Click RSVP (`EVENT_REGISTRATION`):** If a student on spotty lecture-hall Wi-Fi taps "Register" twice in rapid succession, two concurrent requests hit the server. A composite database constraint (`UniqueConstraint("post_id", "user_id")`) guarantees at the storage engine level that at most one registration row can exist per student and event.
-3. **True Reach Analytics Instead of Inflated Click Counters (`POST_VIEW`):** The `post_views` table enforces a composite uniqueness constraint across `post_id` and `user_id`. Even if a student opens the same announcement ten times, PostgreSQL records exactly one unique view, giving the marketing team trustworthy reach metrics in Web-Admin.
-4. **Cascading Cleanup (`ON DELETE CASCADE`):** When an expired event is deleted, PostgreSQL automatically removes its associated `event_registrations` and `post_views` rows, preventing orphaned foreign keys.
+1. **One Row for Feed and Calendar (`POST`):** A guest lecture is both a poster announcement in the news feed and a bookable date on the calendar. Because both screens read from the same row (controlled via `is_event` and `event_date`), there is only one source of truth across the platform. In addition, the unique `external_id` column stores the original identifier of imported Instagram posts so background synchronization recognizes existing entries immediately.
+2. **Preventing Double Bookings Over Spotty Connections (`EVENT_REGISTRATION`):** If a student on a slow mobile connection taps "Register" twice in rapid succession, two concurrent requests hit the server. A composite uniqueness rule (`UniqueConstraint("post_id", "user_id")`) in PostgreSQL guarantees at the storage layer that the second insert is rejected and each student appears at most once on the attendance list.
+3. **True Reach Metrics Instead of Click Inflation (`POST_VIEW`):** The same composite key (`post_id`, `user_id`) protects the `post_views` table. Even if a student opens the same announcement ten times, PostgreSQL records exactly one unique reader, giving the marketing team accurate reach statistics in the admin portal.
+4. **Automated Cleanup via `ON DELETE CASCADE`:** Deleting an expired event automatically removes its associated registrations and view records within the same transaction, preventing orphaned rows.
 
 ---
 
-## Object-Relational Mapping (ORM) and SQL Injection Prevention
+## Type-Safe ORM Mapping With SQLAlchemy and SQL Injection Protection
 
-Inside the Python backend, **SQLAlchemy** maps relational tables to type-safe Python classes while eliminating SQL injection vulnerabilities:
+Inside the Python backend, **SQLAlchemy** maps relational tables to strongly typed Python classes:
 
 ```python
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-class Post(Base):
-    __tablename__ = "posts"
+class EventRegistration(Base):
+    __tablename__ = "event_registrations"
+    __table_args__ = (
+        UniqueConstraint("post_id", "user_id", name="uq_event_registration_post_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200), nullable=False)
-    content = Column(Text, nullable=True)
-    post_type = Column(String(50), default="MANUAL", nullable=False)
-    media_type = Column(String(20), default="NONE", nullable=False)
-    media_url = Column(Text, nullable=True)
-
-    is_event = Column(Boolean, default=False, nullable=False)
-    event_date = Column(DateTime(timezone=True), nullable=True)
-    is_pinned = Column(Boolean, default=False, nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-
-    reminder_value = Column(Integer, nullable=True)
-    reminder_unit = Column(String(20), nullable=True)
-    external_id = Column(String(120), unique=True, nullable=True)
-
-    author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    registrations = relationship("EventRegistration", back_populates="post", cascade="all, delete-orphan")
 ```
 
-Because SQLAlchemy compiles every query into a parameterized prepared statement, PostgreSQL treats user-supplied search strings strictly as literal values and never as executable SQL syntax.
+Beyond clean code organization, SQLAlchemy provides a critical security guarantee: every database query is executed using **parameterized prepared statements**. Even if a user types SQL control characters into a search box, PostgreSQL treats the input strictly as a literal text value rather than executing it as a command.
 
 ---
 
-## Storage Strategy for Unified Media Uploads (Images, Videos, and PDFs)
+## Why Images, Videos, and PDFs Do Not Belong Inside Database Columns
 
-The functional specification defines a single unified upload field in the publication editor supporting event posters (`JPG`, `PNG`, `WEBP`), short videos (`MP4`, `WEBM`), and documents (`PDF`). Why not store these files directly inside PostgreSQL as binary large objects (`BLOB`)?
+The specification provides a unified upload field in the editorial cockpit for event posters (`JPG`, `PNG`, `WEBP`), short videos (`MP4`, `WEBM`), and documents (`PDF`). Storing multi-megabyte binary files directly inside PostgreSQL columns (`BLOB`) would create two severe bottlenecks:
+* **Evicting Database RAM Caches (`Shared Buffers`):** PostgreSQL keeps frequently queried table and index pages in fast system memory. Reading large video chunks through table rows would flush those indexes out of RAM and slow down every query.
+* **Bloated Backups:** Keeping binary files out of the database ensures daily SQL dumps remain a few megabytes in size and finish in seconds.
 
-1. **Protecting the Database RAM Cache (`Shared Buffers`):** PostgreSQL caches frequently accessed table and index pages in RAM. Reading multi-megabyte `MP4` videos out of table rows would evict hot index pages from memory and degrade query performance across the entire platform.
-2. **Lean Backups and Direct HTTP Streaming:** Keeping binary files out of relational tables keeps daily database dumps small and fast, while allowing Nginx and the static file handler to stream video chunks directly from disk to mobile devices.
+The architecture therefore separates binary storage from metadata persistence:
 
 ```mermaid
-flowchart TD
-    Client["Web-Admin Editor"] -->|1. Multipart Upload (Image / MP4 / PDF)| API["FastAPI (/api/media/upload)"]
-    API -->|2. Validate MIME type & generate UUIDv4 filename| Storage["Host Volume (/uploads/uuid.mp4)"]
-    API -->|3. Return URL path (/uploads/uuid.mp4)| Client
-    Client -->|4. POST /api/publications with media_url & media_type| API
-    API -->|5. Store lightweight path string only| DB[("PostgreSQL (posts table)")]
+flowchart LR
+    Editor["Web-Admin Editor"] -->|1. Upload File (Image / MP4 / PDF)| UploadAPI["FastAPI (/api/media/upload)"]
+    UploadAPI -->|2. Stream 64 KB Chunks With UUIDv4 Name| Volume[("Filesystem Volume\n/app/uploads/a8f9...mp4")]
+    UploadAPI -->|3. Store Lightweight Path String| DB[("PostgreSQL Table posts\nmedia_url = '/uploads/a8f9...mp4'")]
 ```
 
-The upload endpoint validates the MIME type, assigns a cryptographically random `UUIDv4` filename to prevent path traversal attacks, and streams the file to the persistent volume in 64 KB chunks so server RAM usage stays flat:
+The upload endpoint verifies the MIME type, generates a random `UUIDv4` filename to prevent path collisions, and streams the file in 64-kilobyte chunks to the persistent volume, storing only the short URL string in the `posts` table:
 
 ```python
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 
 router = APIRouter(prefix="/api/media", tags=["Media"])
 
-ALLOWED_MEDIA = {
+ALLOWED_TYPES = {
     "image/jpeg": (".jpg", "IMAGE"),
     "image/png": (".png", "IMAGE"),
     "image/webp": (".webp", "IMAGE"),
@@ -168,39 +154,29 @@ ALLOWED_MEDIA = {
 }
 
 @router.post("/upload")
-async def upload_media(file: UploadFile):
-    if file.content_type not in ALLOWED_MEDIA:
+async def upload_media_file(file: UploadFile):
+    if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Unsupported media format. Allowed types: JPG, PNG, WEBP, MP4, WEBM, and PDF.",
+            detail="Supported formats: JPG, PNG, WEBP, MP4, WEBM, and PDF.",
         )
 
-    extension, media_category = ALLOWED_MEDIA[file.content_type]
-    unique_filename = f"{uuid.uuid4().hex}{extension}"
-    target_path = Path("/app/uploads") / unique_filename
+    ext, category = ALLOWED_TYPES[file.content_type]
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    dest = Path("/app/uploads") / safe_name
 
-    with open(target_path, "wb") as buffer:
+    with open(dest, "wb") as out_file:
         while chunk := await file.read(64 * 1024):
-            buffer.write(chunk)
+            out_file.write(chunk)
 
-    return {
-        "url": f"/uploads/{unique_filename}",
-        "media_type": media_category,
-    }
+    return {"url": f"/uploads/{safe_name}", "media_type": category}
 ```
 
 ---
 
-## Version-Controlled Schema Evolution with Alembic
+## Controlled Schema Evolution With Alembic
 
-When new requirements are added to the specification during the semester (such as the mandatory expiration timestamp `expires_at` or configurable reminders `reminder_value` and `reminder_unit`), wiping the production database or running ad-hoc SQL commands by hand is not an option. **Alembic** tracks every schema change as a versioned migration script committed to Git:
-
-```mermaid
-flowchart LR
-    Rev1["001: Initial Schema (users, posts)"] --> Rev2["002: Classroom OAuth Token"]
-    Rev2 --> Rev3["003: Views, RSVP & Audit Logs"]
-    Rev3 --> Rev4["004: Unified Post & Expiry Fields"]
-```
+When new requirements are added during the semester (such as the configurable reminder fields `reminder_value` and `reminder_unit`), a production database cannot simply be dropped and recreated. **Alembic** tracks every schema change in versioned migration scripts, just like Git commits for SQL tables:
 
 ```python
 """add unified post expiry and reminder columns
@@ -227,12 +203,12 @@ def downgrade() -> None:
     op.drop_column("posts", "media_type")
 ```
 
-Whenever the backend container starts, its entrypoint runs `alembic upgrade head` automatically before launching FastAPI. This guarantees that the database schema matches the application code across every developer laptop and production server.
+Whenever the backend container starts, `alembic upgrade head` checks the current database revision and applies any pending migrations automatically without touching existing records.
 
 ---
 
 ## Series Conclusion
 
-1. **The Data Model Anchors the Specification:** The unified `posts` table eliminates data silos between the news feed and the calendar, while PostgreSQL `UniqueConstraint` rules prevent duplicate event registrations and inflated view counts at the database level.
-2. **Metadata in PostgreSQL, Binaries on the Volume:** Offloading images, videos (`MP4`/`WEBM`), and PDFs to the `uploads_data` volume preserves PostgreSQL RAM buffers for fast relational queries.
-3. **From Functional Specification to End-to-End Architecture:** Tracing a single request from the encrypted NetBird tunnel through the Nginx reverse proxy, the offline-capable client, the Pydantic validation gate, and down into the PostgreSQL transaction equips you with the universal mental model needed to architect and build any modern web application.
+1. **Data Integrity Enforced at the Storage Layer:** The unified `posts` table prevents data silos between the feed and calendar, while composite `UniqueConstraint` rules in PostgreSQL make duplicate event registrations and inflated read counts impossible.
+2. **Structured Metadata in SQL, Binary Media on Disk:** Offloading images, videos, and PDFs to the `uploads_data` volume keeps PostgreSQL memory buffers dedicated to fast relational queries.
+3. **The Complete Mental Model of Modern Web Applications:** Tracing the journey from functional specification (Chapter 1) through isolated Docker containers (Chapter 2), zero-port WireGuard tunnels and single-origin proxies (Chapter 3), offline-capable clients (Chapter 4), and strict Pydantic API contracts (Chapter 5) down to ACID database transactions (Chapter 6) provides the architectural foundation needed to design and build resilient software systems.

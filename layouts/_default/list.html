@@ -11,7 +11,7 @@
     {{ .Title }}
     {{- if and (or (eq .Kind `term`) (eq .Kind `section`)) (.Param "ShowRssButtonInSectionTermList") }}
     {{- with .OutputFormats.Get "rss" }}
-    <a href="{{ .RelPermalink }}" title="RSS" aria-label="RSS">
+    <a href="{{ .RelPermalink | relLangURL }}" title="RSS" aria-label="RSS">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round" height="23">
         <path d="M4 11a9 9 0 0 1 9 9" />
@@ -84,7 +84,7 @@
   <header class="entry-header">
     {{- if $isSeriesHub }}
     {{- $seriesId := .Params.series }}
-    {{- $seriesChapters := where (where $.Site.RegularPages "Params.series" $seriesId) "Params.series_part" "!=" nil }}
+    {{- $seriesChapters := where (where (where $.Site.RegularPages "Lang" $.Lang) "Params.series" $seriesId) "Params.series_part" "!=" nil }}
     {{- $chapterCount := len $seriesChapters }}
     {{- $totalReadingTime := 0 }}
     {{- range $seriesChapters }}
@@ -138,7 +138,7 @@
     {{- partial "post_meta.html" . -}}
   </footer>
   {{- end }}
-  <a class="entry-link" aria-label="post link to {{ .Title | plainify }}" href="{{ .Permalink }}"></a>
+  <a class="entry-link" aria-label="post link to {{ .Title | plainify }}" href="{{ .RelPermalink | relLangURL }}"></a>
 </article>
 {{- end }}
 
@@ -146,7 +146,7 @@
 <footer class="page-footer">
   <nav class="pagination">
     {{- if $paginator.HasPrev }}
-    <a class="prev" href="{{ $paginator.Prev.URL | absURL }}">
+    <a class="prev" href="{{ $paginator.Prev.URL | relLangURL }}">
       «&nbsp;{{ i18n "prev_page" }}&nbsp;
       {{- if (.Param "ShowPageNums") }}
       {{- sub $paginator.PageNumber 1 }}/{{ $paginator.TotalPages }}
@@ -154,7 +154,7 @@
     </a>
     {{- end }}
     {{- if $paginator.HasNext }}
-    <a class="next" href="{{ $paginator.Next.URL | absURL }}">
+    <a class="next" href="{{ $paginator.Next.URL | relLangURL }}">
       {{- i18n "next_page" }}&nbsp;
       {{- if (.Param "ShowPageNums") }}
       {{- add 1 $paginator.PageNumber }}/{{ $paginator.TotalPages }}
