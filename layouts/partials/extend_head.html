@@ -10,3 +10,15 @@
 <script defer src="{{ $scriptURL }}" data-website-id="{{ $websiteId }}"{{ with $domains }} data-domains="{{ . }}"{{ end }}{{ with $hostURL }} data-host-url="{{ . }}"{{ end }}></script>
   {{- end -}}
 {{- end -}}
+{{- /* Mermaid.js loader */ -}}
+{{- if or .Params.mermaid (and .RawContent (in .RawContent "```mermaid")) -}}
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  const isDark = document.documentElement.dataset.theme === 'dark' || (document.body && document.body.classList.contains('dark'));
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'loose'
+  });
+</script>
+{{- end -}}
