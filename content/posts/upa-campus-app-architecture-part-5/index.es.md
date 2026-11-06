@@ -23,10 +23,10 @@ hiddenInList: true
 
 ## Enfoque API-First con FastAPI: Sincronía entre Backend y Equipo Móvil
 
-Cuando un equipo desarrolla en paralelo el portal editorial web y la aplicación nativa para Android (Kotlin), cualquier duda sobre nombres de campos o formatos de fecha genera errores de integración. La UPA Campus App evita estos roces mediante un diseño **API-First** basado en **FastAPI**:
+Cuando un equipo desarrolla en paralelo el portal editorial de escritorio (`web-admin/`) y la Campus PWA Mobile First (`web-app/`), cualquier duda sobre nombres de campos o formatos de fecha genera errores de integración. La UPA Campus App evita estos roces mediante un diseño **API-First** basado en **FastAPI**:
 
-1. **Documentación Interactiva Automática (`/docs`):** FastAPI lee las anotaciones de tipos de Python directamente del código y genera una especificación OpenAPI interactiva. El equipo de Android puede consultar en vivo qué parámetros exige cada ruta y qué estructura devuelve sin depender de manuales externos.
-2. **Concurrencia Asíncrona para Integraciones Externas (`ASGI`):** Cuando decenas de estudiantes abren su agenda al mismo tiempo por la mañana y el backend consulta las entregas pendientes en los servidores de Google Classroom, la espera de red no bloquea el servidor. El bucle de eventos asíncrono sigue atendiendo las peticiones del resto del campus sin demoras.
+1. **Documentación Interactiva Automática (`/docs`):** FastAPI lee las anotaciones de tipos de Python directamente del código y genera una especificación OpenAPI 3.1 interactiva. El equipo de frontend puede consultar en vivo qué parámetros exige cada ruta y qué estructura devuelve sin depender de manuales externos.
+2. **Concurrencia Asíncrona para IA Multimodal e Integraciones Externas (`ASGI`):** Cuando decenas de estudiantes abren su agenda al mismo tiempo por la mañana o el backend extrae metadatos de eventos desde afiches mediante Google Gemini Flash y consulta las entregas pendientes en Google Classroom, la espera de red no bloquea el servidor. El bucle de eventos asíncrono sigue atendiendo las peticiones del resto del campus sin demoras.
 
 ---
 

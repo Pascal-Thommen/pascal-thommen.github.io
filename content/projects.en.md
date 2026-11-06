@@ -12,6 +12,29 @@ Overview of selected open-source repositories and development projects focusing 
 
   <div class="project-card">
     <div>
+      <h3>UPA Campus Progressive Web App</h3>
+      <div class="project-tags">
+        <span class="project-tag">FastAPI</span>
+        <span class="project-tag">PostgreSQL 16</span>
+        <span class="project-tag">Service Worker PWA</span>
+        <span class="project-tag">Google OAuth 2.0</span>
+        <span class="project-tag">NetBird Zero Trust</span>
+        <span class="project-tag">Gemini Flash AI</span>
+      </div>
+      <p>Central campus platform for Universidad Paraguayo Alemana (UPA). Role: Project Lead, System Architecture, and Backend Implementation. Core capabilities: Mobile First Campus PWA, automated event extraction via multimodal AI, Google Classroom synchronization, and Web Push notifications.</p>
+    </div>
+    <div class="project-links">
+      <a class="project-link" href="/posts/upa-campus-app-architecture/">
+        System Architecture & Project Page →
+      </a>
+      <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
+        GitHub Repository →
+      </a>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div>
       <h3>VibeCore-ERP</h3>
       <div class="project-tags">
         <span class="project-tag">Docker</span>
@@ -45,26 +68,6 @@ Overview of selected open-source repositories and development projects focusing 
       </a>
     </div>
   </div>
-
-  <div class="project-card">
-    <div>
-      <h3><span>UPA Académico PWA</span> <span class="project-badge-private">[Private (GitHub)]</span></h3>
-      <div class="project-tags">
-        <span class="project-tag">Next.js 14</span>
-        <span class="project-tag">React</span>
-        <span class="project-tag">TypeScript</span>
-        <span class="project-tag">PWA</span>
-        <span class="project-tag">Tailwind CSS</span>
-      </div>
-      <p>Progressive Web App for Universidad Paraguayo Alemana (UPA), delivering mobile-first academic schedules, grades, and campus services.</p>
-    </div>
-    <div class="project-links">
-      <a class="project-link" href="https://github.com/Pascal-Thommen/UPA_PWA" target="_blank" rel="noopener noreferrer">
-        GitHub Repository [Private] →
-      </a>
-    </div>
-  </div>
-
 
   <div class="project-card">
     <div>

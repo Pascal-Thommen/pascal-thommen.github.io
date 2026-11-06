@@ -12,6 +12,29 @@ Visión general de repositorios open-source y proyectos de desarrollo selecciona
 
   <div class="project-card">
     <div>
+      <h3>UPA Campus Progressive Web App</h3>
+      <div class="project-tags">
+        <span class="project-tag">FastAPI</span>
+        <span class="project-tag">PostgreSQL 16</span>
+        <span class="project-tag">Service Worker PWA</span>
+        <span class="project-tag">Google OAuth 2.0</span>
+        <span class="project-tag">NetBird Zero Trust</span>
+        <span class="project-tag">Gemini Flash IA</span>
+      </div>
+      <p>Plataforma digital central de la Universidad Paraguayo Alemana (UPA). Rol: Dirección de Proyecto, Arquitectura de Sistemas e Implementación Backend. Funciones clave: Campus PWA Mobile First, extracción automática de eventos con IA multimodal, sincronización con Google Classroom y notificaciones Web Push.</p>
+    </div>
+    <div class="project-links">
+      <a class="project-link" href="/es/posts/upa-campus-app-architecture/">
+        Arquitectura y Página del Proyecto →
+      </a>
+      <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
+        Repositorio en GitHub →
+      </a>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div>
       <h3>VibeCore-ERP</h3>
       <div class="project-tags">
         <span class="project-tag">Docker</span>
@@ -45,26 +68,6 @@ Visión general de repositorios open-source y proyectos de desarrollo selecciona
       </a>
     </div>
   </div>
-
-  <div class="project-card">
-    <div>
-      <h3><span>UPA Académico PWA</span> <span class="project-badge-private">[Privado (GitHub)]</span></h3>
-      <div class="project-tags">
-        <span class="project-tag">Next.js 14</span>
-        <span class="project-tag">React</span>
-        <span class="project-tag">TypeScript</span>
-        <span class="project-tag">PWA</span>
-        <span class="project-tag">Tailwind CSS</span>
-      </div>
-      <p>Progressive Web App moderna para la Universidad Paraguayo Alemana (UPA) que brinda acceso móvil a horarios, calificaciones y servicios académicos.</p>
-    </div>
-    <div class="project-links">
-      <a class="project-link" href="https://github.com/Pascal-Thommen/UPA_PWA" target="_blank" rel="noopener noreferrer">
-        Repositorio en GitHub [Privado] →
-      </a>
-    </div>
-  </div>
-
 
   <div class="project-card">
     <div>

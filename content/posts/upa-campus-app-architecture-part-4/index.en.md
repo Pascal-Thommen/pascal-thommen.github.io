@@ -3,7 +3,7 @@ title: "UPA Campus App (Chapter 4): Client Architecture, PWA, and UI State"
 date: 2026-10-30T16:35:00Z
 description: "How do web apps and mobile clients stay responsive even in lecture halls with spotty Wi-Fi? Chapter 4 explains the App Shell model, local offline storage, and state-driven forms."
 summary: "Why do modern apps avoid reloading entire web pages on every tap? Chapter 4 shows how the App Shell, offline caching, and UI state logic implement the specification on the client device."
-tags: ["Frontend", "PWA", "JavaScript", "Kotlin", "Software Architecture", "Enterprise Systems"]
+tags: ["Frontend", "Service Worker PWA", "JavaScript", "Web Push", "Software Architecture", "Enterprise Systems"]
 categories: ["Architecture", "Enterprise Systems"]
 author: "Pascal Thommen"
 hidemeta: false
@@ -17,7 +17,7 @@ series_part_title: "Client Architecture, PWA, and UI State"
 hiddenInList: true
 ---
 
-Why does a modern mobile web application feel as responsive as a native program even when Wi-Fi signal drops inside a basement lecture hall? Because the client device loads the visual application frame (App Shell) only once, exchanges compact JSON payloads during active use, and keeps synchronized records in local on-device storage. This fourth chapter explains how the UPA Campus App implements this client model across its mobile frontend (PWA and native Android client built with Kotlin and Jetpack Compose) and its desktop editorial cockpit.
+Why does a modern mobile web application feel as responsive as a native program even when Wi-Fi signal drops inside a basement lecture hall? Because the client device loads the visual application frame (App Shell) via a Service Worker (`/sw.js`) only once, exchanges compact JSON payloads during active use, and keeps synchronized records in local on-device storage. This fourth chapter explains how the UPA Campus App implements this client model across its Mobile First Campus PWA and its desktop editorial cockpit.
 
 ---
 
@@ -57,14 +57,14 @@ The UPA Campus App serves two distinct usage contexts: students check updates on
 flowchart TD
     Request["Visit Main Application URL"] --> Viewport{"Detect Device Viewport"}
     Viewport -->|Desktop Monitor| QRPage["Minimalist Desktop Landing Page\nCentral Installation QR Code + Visual App Preview"]
-    Viewport -->|Smartphone| MobileUI["Mobile Interface (PWA Standalone / Android App)"]
-    MobileUI --> OfflineStore["Local Persistence\nCache Storage (Web) / SQLite Room (Android)"]
+    Viewport -->|Smartphone| MobileUI["Mobile Interface (Service Worker PWA Standalone)"]
+    MobileUI --> OfflineStore["Local Persistence\nService Worker Cache Storage & LocalStorage"]
     OfflineStore --> Fallback["Network Fallback\nSchedule & cached news remain readable offline"]
 ```
 
 * **Why Desktop Browsers See a QR Landing Page Instead of a Stretched Phone UI:** Stretching a three-tab mobile interface across a widescreen desktop monitor creates an awkward layout. When a visitor opens the main URL on a laptop, the frontend automatically displays a clean landing page featuring a visual preview of the mobile screens and a single central QR code for instant smartphone installation.
-* **Full-Screen Launch via Web App Manifest (`manifest.json`):** On smartphones, configuring `"display": "standalone"` removes the browser address bar so the web app launches from the home screen like a native utility.
-* **Local Persistence for Dead Zones:** While the server database remains the primary system of record, mobile clients maintain a local persistence layer (`Cache Storage` in the browser and `SQLite / Room` on Android). Feed and calendar data follow a *Network First with Local Fallback* strategy: if lecture hall Wi-Fi drops, the app seamlessly displays the last synchronized state instead of crashing with a connection error.
+* **Full-Screen Launch via Web App Manifest (`manifest.webmanifest`) and Web Push:** On smartphones, configuring `"display": "standalone"` removes the browser address bar so the web app launches from the home screen like a native utility. Through Firebase Cloud Messaging (FCM HTTP v1), the Service Worker also receives background Web Push notifications for urgent campus alerts.
+* **Local Persistence for Dead Zones:** While the server database remains the primary system of record, the PWA maintains a local persistence layer (`Cache Storage` via `/sw.js` and `localStorage`). Feed and calendar data follow a *Network First with Local Fallback* strategy: if lecture hall Wi-Fi drops, the app seamlessly displays the last synchronized state instead of crashing with a connection error.
 
 ---
 
