@@ -60,7 +60,7 @@ flowchart LR
 Diese Dreiteilung löst drei praktische Herausforderungen im Projektalltag:
 1. **Oberflächen-Updates ohne API-Unterbrechung:** Wenn das Marketing-Team eine Anpassung am Layout des Redaktionsportals wünscht, wird lediglich der schlanke Nginx-Container neu gebaut und in Sekundenbruchteilen ausgetauscht. Das Backend und die laufenden Verbindungen der mobilen App bleiben davon unberührt.
 2. **Begrenzung der Angriffsfläche:** Der Frontend-Container besitzt weder einen Python-Interpreter noch Datenbank-Zugangsdaten oder Google-API-Schlüssel.
-3. **Echte Testumgebung für die Mobile-Entwicklung:** Weil das Backend samt automatischer Datenbank-Initialisierung als fertiger Container startet, kann das Android-Team mit einem einzigen Befehl (`docker compose up -d`) lokal einen vollwertigen Server hochfahren, statt gegen starre Platzhalterdaten zu entwickeln.
+3. **Echte Testumgebung für die Frontend-Entwicklung:** Weil das Backend samt automatischer Datenbank-Initialisierung als fertiger Container startet, kann jedes Teammitglied mit einem einzigen Befehl (`docker compose up -d`) lokal einen vollwertigen Server für die PWA und das Web-Admin-Cockpit hochfahren, statt gegen starre Platzhalterdaten zu entwickeln.
 
 ---
 

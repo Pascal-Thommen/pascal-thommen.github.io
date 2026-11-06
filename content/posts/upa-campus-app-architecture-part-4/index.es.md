@@ -3,7 +3,7 @@ title: "UPA Campus App (Capítulo 4): Arquitectura Cliente, PWA y Estados de Int
 date: 2026-10-30T16:35:00Z
 description: "¿Cómo mantienen su fluidez las aplicaciones web y móviles incluso con baja señal Wi-Fi en el aula? El Capítulo 4 explica el modelo App Shell, el almacenamiento offline local y los formularios guiados por estado."
 summary: "¿Por qué una aplicación moderna no recarga toda la página en cada toque? El Capítulo 4 muestra cómo el App Shell, el caché offline y la lógica de interfaz materializan la especificación en el dispositivo."
-tags: ["Frontend", "PWA", "JavaScript", "Kotlin", "Arquitectura de Software", "Enterprise Systems"]
+tags: ["Frontend", "Service Worker PWA", "JavaScript", "Web Push", "Arquitectura de Software", "Enterprise Systems"]
 categories: ["Arquitectura", "Enterprise Systems"]
 author: "Pascal Thommen"
 hidemeta: false
@@ -17,7 +17,7 @@ series_part_title: "Arquitectura Cliente, PWA y Estados de Interfaz"
 hiddenInList: true
 ---
 
-¿Por qué una aplicación web moderna responde en el teléfono móvil con la misma fluidez que un programa nativo, incluso cuando la señal Wi-Fi fluctúa dentro de un aula en el subsuelo? Porque el dispositivo descarga la estructura visual (App Shell) una sola vez, intercambia únicamente paquetes ligeros de datos JSON durante el uso y conserva una copia local en la memoria del equipo. Este cuarto capítulo explica cómo la UPA Campus App implementa este diseño tanto en el cliente móvil (PWA y aplicación Android nativa con Kotlin y Jetpack Compose) como en el portal editorial de escritorio.
+¿Por qué una aplicación web moderna responde en el teléfono móvil con la misma fluidez que un programa nativo, incluso cuando la señal Wi-Fi fluctúa dentro de un aula en el subsuelo? Porque el dispositivo descarga la estructura visual (App Shell) mediante un Service Worker (`/sw.js`) una sola vez, intercambia únicamente paquetes ligeros de datos JSON durante el uso y conserva una copia local en la memoria del equipo. Este cuarto capítulo explica cómo la UPA Campus App implementa este diseño tanto en la Campus PWA Mobile First como en el portal editorial de escritorio.
 
 ---
 
@@ -57,14 +57,14 @@ La UPA Campus App atiende dos contextos de uso muy distintos en la universidad: 
 flowchart TD
     Request["Acceso a la Dirección Principal"] --> Viewport{"Detectar Tipo de Pantalla"}
     Viewport -->|Monitor de Escritorio| QRPage["Página Minimalista de Escritorio\nCódigo QR Central de Instalación + Vista Previa de la App"]
-    Viewport -->|Teléfono Móvil| MobileUI["Interfaz Móvil (PWA Standalone / App Android)"]
-    MobileUI --> OfflineStore["Persistencia Local\nCache Storage (Web) / SQLite Room (Android)"]
+    Viewport -->|Teléfono Móvil| MobileUI["Interfaz Móvil (Service Worker PWA Standalone)"]
+    MobileUI --> OfflineStore["Persistencia Local\nService Worker Cache Storage y LocalStorage"]
     OfflineStore --> Fallback["Respaldo ante Cortes de Red\nAgenda y noticias cargadas siguen disponibles sin señal"]
 ```
 
 * **Por Qué en Escritorio Aparece una Página con Código QR en Vez de una Vista Móvil Estirada:** Estirar una interfaz móvil de tres pestañas en un monitor panorámico resulta incómodo y poco claro. Cuando alguien abre la dirección principal desde una computadora portátil, el frontend detecta el ancho de pantalla y presenta una portada limpia con una vista previa de la aplicación y un único código QR central para instalarla de inmediato en el teléfono.
-* **Ejecución a Pantalla Completa mediante Web App Manifest (`manifest.json`):** En teléfonos móviles, el ajuste `"display": "standalone"` oculta la barra de direcciones del navegador para que la aplicación inicie desde el ícono de inicio como una herramienta nativa.
-* **Almacenamiento Local frente a Zonas sin Cobertura:** Mientras PostgreSQL en el servidor actúa como registro central, los clientes móviles mantienen una base de datos local (`Cache Storage` en la web y `SQLite / Room` en Android). El feed y el calendario aplican la estrategia *Network First con respaldo local*: si se corta el Wi-Fi en el aula, el teléfono muestra de forma transparente la última sincronización guardada en lugar de fallar con un mensaje de error.
+* **Ejecución a Pantalla Completa mediante Web App Manifest (`manifest.webmanifest`) y Web Push:** En teléfonos móviles, el ajuste `"display": "standalone"` oculta la barra de direcciones del navegador para que la aplicación inicie desde el ícono de inicio como una herramienta nativa. Mediante Firebase Cloud Messaging (FCM HTTP v1), el Service Worker recibe además notificaciones Web Push en segundo plano para alertas urgentes del campus.
+* **Almacenamiento Local frente a Zonas sin Cobertura:** Mientras PostgreSQL en el servidor actúa como registro central, la PWA mantiene una capa de almacenamiento local (`Cache Storage` vía `/sw.js` y `localStorage`). El feed y el calendario aplican la estrategia *Network First con respaldo local*: si se corta el Wi-Fi en el aula, el teléfono muestra de forma transparente la última sincronización guardada en lugar de fallar con un mensaje de error.
 
 ---
 

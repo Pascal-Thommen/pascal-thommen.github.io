@@ -23,10 +23,10 @@ Warum reicht es nicht aus, Pflichtfelder und Schreibschutz-Regeln nur im Browser
 
 ## API-First mit FastAPI: Wie Backend und Mobile-Team synchron arbeiten
 
-Wenn in einem Projektteam gleichzeitig am Web-Admin-Portal und an einer nativen Android-App (Kotlin) gearbeitet wird, führt jede Unklarheit über Datenfelder oder Datumsformate sofort zu Fehlern. Die UPA Campus App setzt deshalb auf einen strikten **API-First-Ansatz** mit **FastAPI**:
+Wenn in einem Projektteam gleichzeitig am Desktop-Redaktionsportal (`web-admin/`) und an der mobilen Service Worker PWA (`web-app/`) gearbeitet wird, führt jede Unklarheit über Datenfelder oder Datumsformate sofort zu Fehlern. Die UPA Campus App setzt deshalb auf einen strikten **API-First-Ansatz** mit **FastAPI**:
 
-1. **Automatische Schnittstellendokumentation (`/docs`):** FastAPI liest die Python-Typdefinitionen aus dem Quellcode und erzeugt daraus vollautomatisch eine interaktive OpenAPI-Spezifikation. Entwickler im Android-Team sehen dort jederzeit live, welche Parameter ein Endpunkt erwartet und welche Antwortstruktur zurückkommt.
-2. **Asynchrone Verarbeitung für externe Schnittstellen (`ASGI`):** Wenn viele Studierende morgens gleichzeitig ihren Kalender öffnen und das Backend dazu Abgabefristen von den Servern von Google Classroom abfragt, blockiert das Warten auf die externe Antwort keinen Server-Prozess. Die asynchrone Ereignisschleife (Event Loop) bearbeitet in dieser kurzen Wartezeit nahtlos die Anfragen weiterer Nutzer.
+1. **Automatische Schnittstellendokumentation (`/docs`):** FastAPI liest die Python-Typdefinitionen aus dem Quellcode und erzeugt daraus vollautomatisch eine interaktive OpenAPI-3.1-Spezifikation. Entwickler im Frontend-Team sehen dort jederzeit live, welche Parameter ein Endpunkt erwartet und welche Antwortstruktur zurückkommt.
+2. **Asynchrone Verarbeitung für KI-Extraktion und externe Schnittstellen (`ASGI`):** Wenn viele Studierende morgens gleichzeitig ihren Kalender öffnen oder das Backend über Google Gemini Flash Veranstaltungsdaten aus Plakaten extrahiert und Abgabefristen von Google Classroom abfragt, blockiert das Warten auf die externe Antwort keinen Server-Prozess. Die asynchrone Ereignisschleife (Event Loop) bearbeitet in dieser kurzen Wartezeit nahtlos die Anfragen weiterer Nutzer.
 
 ---
 

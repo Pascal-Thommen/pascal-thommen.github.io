@@ -3,7 +3,7 @@ title: "UPA Campus App (Kapitel 4): Client-Architektur, PWA und UI-Zustände"
 date: 2026-10-30T16:35:00Z
 description: "Wie bleiben Web-Apps und mobile Clients auch bei schwachem Empfang im Hörsaal reaktionsschnell? Kapitel 4 erklärt das App-Shell-Modell, lokale Offline-Speicher und zustandsgesteuerte Formulare."
 summary: "Warum lädt eine moderne App nicht bei jedem Klick eine neue Webseite? Kapitel 4 zeigt, wie App Shell, Offline-Caching und UI-Zustandslogik das Pflichtenheft auf dem Endgerät umsetzen."
-tags: ["Frontend", "PWA", "JavaScript", "Kotlin", "Softwarearchitektur", "Enterprise Systems"]
+tags: ["Frontend", "Service Worker PWA", "JavaScript", "Web Push", "Softwarearchitektur", "Enterprise Systems"]
 categories: ["Architektur", "Enterprise Systems"]
 author: "Pascal Thommen"
 hidemeta: false
@@ -17,7 +17,7 @@ series_part_title: "Client-Architektur, PWA und UI-Zustände"
 hiddenInList: true
 ---
 
-Warum fühlt sich eine moderne Web-Applikation auf dem Smartphone so flüssig an wie ein lokal installiertes Programm, selbst wenn das WLAN im Untergeschoss-Hörsaal schwankt? Weil das Endgerät das optische Grundgerüst (App Shell) nur ein einziges Mal lädt, während der laufenden Nutzung lediglich kompakte JSON-Datenpakete austauscht und geladene Inhalte in einem lokalen Gerätespeicher vorhält. Dieses vierte Kapitel zeigt, wie die UPA Campus App dieses Client-Modell im mobilen Frontend (PWA und nativer Android-Client mit Kotlin und Jetpack Compose) sowie im Desktop-Redaktionsportal umsetzt.
+Warum fühlt sich eine moderne Web-Applikation auf dem Smartphone so flüssig an wie ein lokal installiertes Programm, selbst wenn das WLAN im Untergeschoss-Hörsaal schwankt? Weil das Endgerät das optische Grundgerüst (App Shell) über einen Service Worker (`/sw.js`) nur ein einziges Mal lädt, während der laufenden Nutzung lediglich kompakte JSON-Datenpakete austauscht und geladene Inhalte in einem lokalen Gerätespeicher vorhält. Dieses vierte Kapitel zeigt, wie die UPA Campus App dieses Client-Modell in der Mobile First Campus PWA sowie im Desktop-Redaktionsportal umsetzt.
 
 ---
 
@@ -57,14 +57,14 @@ Die UPA Campus App bedient zwei grundverschiedene Nutzungssituationen am Campus:
 flowchart TD
     Request["Aufruf der Hauptadresse"] --> Viewport{"Geräteklasse erkennen"}
     Viewport -->|Desktop-Monitor| QRPage["Minimalistische Desktop-Landingpage\nZentraler QR-Code zur Installation + Visuelle App-Vorschau"]
-    Viewport -->|Smartphone| MobileUI["Mobile Oberfläche (PWA Standalone / Android App)"]
-    MobileUI --> OfflineStore["Lokale Persistenz\nCache Storage (Web) / SQLite Room (Android)"]
+    Viewport -->|Smartphone| MobileUI["Mobile Oberfläche (Service Worker PWA Standalone)"]
+    MobileUI --> OfflineStore["Lokale Persistenz\nService Worker Cache Storage & LocalStorage"]
     OfflineStore --> Fallback["Netzwerk-Fallback\nStundenplan & geladene News bleiben im Funkloch lesbar"]
 ```
 
 * **Warum zeigt der Desktop eine QR-Landingpage statt einer breitgezogenen Smartphone-Ansicht?** Eine für schmale Telefonbildschirme entworfene Drei-Tab-Navigation wirkt auf einem 27-Zoll-Monitor unübersichtlich. Öffnet jemand die Hauptadresse am Laptop, präsentiert das Frontend deshalb eine aufgeräumte Übersichtsseite mit einer visuellen Vorschau der App-Bildschirme und einem zentralen QR-Code, über den Studierende die App sofort auf ihr Smartphone holen können.
-* **Vollbild-Installation per Web App Manifest (`manifest.json`):** Auf Mobilgeräten sorgt die Einstellung `"display": "standalone"` dafür, dass die Anwendung ohne störende Browser-Adressleiste wie eine reguläre App vom Startbildschirm aus startet.
-* **Lokale Zwischenspeicherung gegen Funklöcher:** Während die zentrale Datenbank auf dem Server die verbindlichen Bestände führt, nutzen die mobilen Clients eine zweite, lokale Speicherschicht (`Cache Storage` im Browser bzw. `SQLite / Room` in der Android-App). Für den Feed und den Kalender gilt das Prinzip *Network First mit lokalem Fallback*: Antwortet das Campus-WLAN im Hörsaal nicht, zeigt das Endgerät automatisch den zuletzt geladenen Stand an, statt eine leere Fehlerseite zu präsentieren.
+* **Vollbild-Installation per Web App Manifest (`manifest.webmanifest`) und Web Push:** Auf Mobilgeräten sorgt die Einstellung `"display": "standalone"` dafür, dass die Anwendung ohne störende Browser-Adressleiste direkt vom Startbildschirm aus startet. Über Firebase Cloud Messaging (FCM HTTP v1) empfängt der Service Worker zudem Hintergrund-Push-Benachrichtigungen für zeitkritische Campus-Meldungen.
+* **Lokale Zwischenspeicherung gegen Funklöcher:** Während die zentrale Datenbank auf dem Server die verbindlichen Bestände führt, nutzt die PWA eine lokale Speicherschicht (`Cache Storage` über `/sw.js` sowie `localStorage`). Für den Feed und den Kalender gilt das Prinzip *Network First mit lokalem Fallback*: Antwortet das Campus-WLAN im Hörsaal nicht, zeigt das Endgerät automatisch den zuletzt geladenen Stand an, statt eine leere Fehlerseite zu präsentieren.
 
 ---
 

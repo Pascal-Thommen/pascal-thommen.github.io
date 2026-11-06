@@ -12,6 +12,29 @@ ShowBreadCrumbs: false
 
   <div class="project-card">
     <div>
+      <h3>UPA Campus Progressive Web App</h3>
+      <div class="project-tags">
+        <span class="project-tag">FastAPI</span>
+        <span class="project-tag">PostgreSQL 16</span>
+        <span class="project-tag">Service Worker PWA</span>
+        <span class="project-tag">Google OAuth 2.0</span>
+        <span class="project-tag">NetBird Zero Trust</span>
+        <span class="project-tag">Gemini Flash KI</span>
+      </div>
+      <p>Zentrale Campus-Plattform der Universidad Paraguayo Alemana (UPA). Rolle: Projektleitung, Systemarchitektur und Backend Implementierung. Kernfunktionen: Mobile First Campus PWA, automatische Event Extraktion mit multimodaler KI, Google Classroom Synchronisation und Web Push Benachrichtigungen.</p>
+    </div>
+    <div class="project-links">
+      <a class="project-link" href="/de/posts/upa-campus-app-architecture/">
+        Systemarchitektur & Projektseite →
+      </a>
+      <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
+        GitHub Repository →
+      </a>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div>
       <h3>VibeCore-ERP</h3>
       <div class="project-tags">
         <span class="project-tag">Docker</span>
@@ -45,26 +68,6 @@ ShowBreadCrumbs: false
       </a>
     </div>
   </div>
-
-  <div class="project-card">
-    <div>
-      <h3><span>UPA Académico PWA</span> <span class="project-badge-private">[Privat (GitHub)]</span></h3>
-      <div class="project-tags">
-        <span class="project-tag">Next.js 14</span>
-        <span class="project-tag">React</span>
-        <span class="project-tag">TypeScript</span>
-        <span class="project-tag">PWA</span>
-        <span class="project-tag">Tailwind CSS</span>
-      </div>
-      <p>Progressive Web App für die Universidad Paraguayo Alemana (UPA) zur mobilen Bereitstellung akademischer Prozesse, Stundenpläne und Kursübersichten.</p>
-    </div>
-    <div class="project-links">
-      <a class="project-link" href="https://github.com/Pascal-Thommen/UPA_PWA" target="_blank" rel="noopener noreferrer">
-        GitHub Repository [Privat] →
-      </a>
-    </div>
-  </div>
-
 
   <div class="project-card">
     <div>

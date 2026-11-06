@@ -23,10 +23,10 @@ Why is it insufficient to enforce required fields and read-only locks solely ins
 
 ## API-First With FastAPI: Keeping Backend and Mobile Teams in Sync
 
-When one team builds the desktop editorial portal while another develops the native Android application (Kotlin), any ambiguity around field names or timestamp formats quickly causes integration bugs. The UPA Campus App prevents this friction through an **API-First** approach built on **FastAPI**:
+When a team develops the desktop editorial portal (`web-admin/`) alongside the mobile Service Worker PWA (`web-app/`), any ambiguity around field names or timestamp formats quickly causes integration bugs. The UPA Campus App prevents this friction through an **API-First** approach built on **FastAPI**:
 
-1. **Automated OpenAPI Documentation (`/docs`):** FastAPI inspects Python type annotations directly from the source code and generates an interactive OpenAPI specification automatically. Mobile developers can inspect every endpoint, required parameter, and status code live without waiting for manually updated documents.
-2. **Asynchronous Concurrency for External Integrations (`ASGI`):** When dozens of students open their schedules simultaneously in the morning and the backend requests assignment deadlines from the Google Classroom API, waiting on network responses from Google does not block server worker threads. The asynchronous event loop continues serving other campus requests in the meantime.
+1. **Automated OpenAPI Documentation (`/docs`):** FastAPI inspects Python type annotations directly from the source code and generates an interactive OpenAPI 3.1 specification automatically. Frontend developers can inspect every endpoint, required parameter, and status code live without waiting for manually updated documents.
+2. **Asynchronous Concurrency for Multimodal AI and External Integrations (`ASGI`):** When dozens of students open their schedules simultaneously in the morning or the backend extracts event metadata from posters via Google Gemini Flash and requests assignment deadlines from the Google Classroom API, waiting on network responses does not block server worker threads. The asynchronous event loop continues serving other campus requests in the meantime.
 
 ---
 
