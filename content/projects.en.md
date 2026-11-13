@@ -24,9 +24,6 @@ Overview of selected open-source repositories and development projects focusing 
       <p>Central campus platform for Universidad Paraguayo Alemana (UPA). Role: Project Lead, System Architecture, and Backend Implementation. Core capabilities: Mobile First Campus PWA, automated event extraction via multimodal AI, Google Classroom synchronization, and Web Push notifications.</p>
     </div>
     <div class="project-links">
-      <a class="project-link" href="/posts/upa-campus-app-architecture/">
-        System Architecture & Project Page →
-      </a>
       <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
         GitHub Repository →
       </a>

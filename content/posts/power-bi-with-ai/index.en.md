@@ -69,7 +69,7 @@ When you need interactive modeling with instant validation, the Model Context Pr
 
 The Visual Studio Code Extension **Power BI Modeling MCP Server** bundles a standalone executable (`powerbi-modeling-mcp.exe`) built on Microsoft Analysis Services client libraries.
 
-![Power BI Modeling MCP Server in VS Code Extensions](vscode_mcp_extension.jpg)
+![Power BI Modeling MCP Server in VS Code Extensions](vscode_mcp_extension.png)
 *The Power BI Modeling MCP Server extension in the Visual Studio Code Marketplace.*
 
 ### Setup Details
