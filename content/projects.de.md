@@ -24,9 +24,6 @@ ShowBreadCrumbs: false
       <p>Zentrale Campus-Plattform der Universidad Paraguayo Alemana (UPA). Rolle: Projektleitung, Systemarchitektur und Backend Implementierung. Kernfunktionen: Mobile First Campus PWA, automatische Event Extraktion mit multimodaler KI, Google Classroom Synchronisation und Web Push Benachrichtigungen.</p>
     </div>
     <div class="project-links">
-      <a class="project-link" href="/de/posts/upa-campus-app-architecture/">
-        Systemarchitektur & Projektseite →
-      </a>
       <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
         GitHub Repository →
       </a>

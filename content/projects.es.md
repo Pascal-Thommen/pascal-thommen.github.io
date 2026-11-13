@@ -24,9 +24,6 @@ Visión general de repositorios open-source y proyectos de desarrollo selecciona
       <p>Plataforma digital central de la Universidad Paraguayo Alemana (UPA). Rol: Dirección de Proyecto, Arquitectura de Sistemas e Implementación Backend. Funciones clave: Campus PWA Mobile First, extracción automática de eventos con IA multimodal, sincronización con Google Classroom y notificaciones Web Push.</p>
     </div>
     <div class="project-links">
-      <a class="project-link" href="/es/posts/upa-campus-app-architecture/">
-        Arquitectura y Página del Proyecto →
-      </a>
       <a class="project-link" href="https://github.com/Pascal-Thommen/upa-app" target="_blank" rel="noopener noreferrer">
         Repositorio en GitHub →
       </a>
