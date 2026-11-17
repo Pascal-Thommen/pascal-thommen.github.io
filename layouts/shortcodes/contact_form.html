@@ -88,9 +88,6 @@
     <div class="contact-success-icon">✓</div>
     <h3>{{ $successTitle }}</h3>
     <p>{{ $successDesc }}</p>
-    <div class="contact-activation-notice" style="display:none;">
-      Hinweis: Das Formular wartet auf die einmalige Bestätigung durch den Inhaber per E-Mail.
-    </div>
     <button type="button" id="contact-reset-btn" class="contact-reset-btn">{{ $btnReset }}</button>
   </div>
 </div>
@@ -244,13 +241,9 @@
 
       const result = await response.json().catch(() => ({}));
 
-      if (response.ok || result.success === "true" || result.success === true || (result.message && result.message.includes('Activation'))) {
+      if (response.ok || result.success === "true" || result.success === true) {
         formCard.style.display = 'none';
         successCard.style.display = 'block';
-        if (result.message && result.message.includes('Activation')) {
-          const actNotice = successCard.querySelector('.contact-activation-notice');
-          if (actNotice) actNotice.style.display = 'block';
-        }
       } else {
         throw new Error(result.message || messages.genericError);
       }
