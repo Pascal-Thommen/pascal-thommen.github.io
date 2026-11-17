@@ -13,6 +13,7 @@ markup:
 
 params:
   env: "production"
+  description: "Business IT student | Odoo ERP | Business software built with AI agents. Seeking an internship in Germany from January 2028."
   defaultTheme: "auto"
   disableThemeToggle: false
   disableLangToggle: false
@@ -44,12 +45,15 @@ languages:
     label: "English"
     locale: "en-US"
     weight: 1
-    title: "Pascal Thommen | Business Informatics"
+    title: "Pascal Thommen | Business IT Student"
     params:
+      description: "Business IT student | Odoo ERP | Business software built with AI agents. Seeking an internship in Germany from January 2028."
       profileMode:
         enabled: true
         title: "Pascal Thommen"
-        subtitle: "Business Informatics Specialist @ UPA | ERP Architecture & AI-driven System Engineering"
+        subtitle: "Business IT student | Odoo ERP | Business software built with AI agents"
+        status: "Seeking an internship in Germany from January 2028"
+        bio: "I sit between the business problem and the AI agent. I turn operational problems into working software: a campus app I built end to end, a reconciliation app for a sawmill, an import cost calculator for Paraguay. Before that, almost four years of operations, Odoo and imports in a family business. From October 2027 I study in Germany for two months."
         imageUrl: "images/pascal_linkedin_profile.jpg"
         imageWidth: 160
         imageHeight: 160
@@ -79,12 +83,15 @@ languages:
     label: "Deutsch"
     locale: "de-DE"
     weight: 2
-    title: "Pascal Thommen | Wirtschaftsinformatiker"
+    title: "Pascal Thommen | Wirtschaftsinformatik-Student"
     params:
+      description: "Wirtschaftsinformatik-Student | Odoo ERP | Unternehmenssoftware mit KI-Agenten. Auf der Suche nach einem Praktikum in Deutschland ab Januar 2028."
       profileMode:
         enabled: true
         title: "Pascal Thommen"
-        subtitle: "Wirtschaftsinformatiker @ UPA | ERP-Architektur & AI-driven System Engineering"
+        subtitle: "Wirtschaftsinformatik-Student | Odoo ERP | Unternehmenssoftware mit KI-Agenten"
+        status: "Auf der Suche nach einem Praktikum in Deutschland ab Januar 2028"
+        bio: "Ich stehe zwischen betriebswirtschaftlichen Problemstellungen und KI-Agenten. Ich verwandle operative Herausforderungen in funktionierende Software: eine Campus-App von Grund auf eigenständig gebaut, eine Abstimmungs-App für ein Sägewerk, ein Importkostenrechner für Paraguay. Davor fast vier Jahre operative Praxis, Odoo und Importabwicklung im Familienunternehmen. Ab Oktober 2027 studiere ich für zwei Monate in Deutschland."
         imageUrl: "images/pascal_linkedin_profile.jpg"
         imageWidth: 160
         imageHeight: 160
@@ -114,12 +121,15 @@ languages:
     label: "Español"
     locale: "es-PY"
     weight: 3
-    title: "Pascal Thommen | Informática Empresarial"
+    title: "Pascal Thommen | Estudiante de Informática Empresarial"
     params:
+      description: "Estudiante de Informática Empresarial | Odoo ERP | Software empresarial con agentes de IA. Buscando una pasantía en Alemania a partir de enero de 2028."
       profileMode:
         enabled: true
         title: "Pascal Thommen"
-        subtitle: "Informático Empresarial @ UPA | Arquitectura ERP e Ingeniería de Sistemas con IA"
+        subtitle: "Estudiante de Informática Empresarial | Odoo ERP | Software empresarial con agentes de IA"
+        status: "Buscando una pasantía en Alemania a partir de enero de 2028"
+        bio: "Conecto los desafíos del negocio con los agentes de IA. Convierto problemas operativos en software funcional: una app de campus desarrollada de punta a punta de forma individual, una app de conciliación para un aserradero, una calculadora de costos de importación para Paraguay. Anteriormente, casi cuatro años en operaciones, Odoo e importaciones en una empresa familiar. A partir de octubre de 2027 cursaré estudios durante dos meses en Alemania."
         imageUrl: "images/pascal_linkedin_profile.jpg"
         imageWidth: 160
         imageHeight: 160

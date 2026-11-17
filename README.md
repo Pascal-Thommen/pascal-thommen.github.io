@@ -1,6 +1,6 @@
 # pascal-thommen.github.io
 
-Personal portfolio and project showcase for **Pascal Thommen** (Wirtschaftsinformatiker / Business Informatics Specialist).
+Personal portfolio and project showcase for **Pascal Thommen** (Business IT student | Odoo ERP | Business software built with AI agents).
 
 Built with [Hugo](https://gohugo.io/) and [PaperMod](https://github.com/adityatelange/hugo-PaperMod) theme.
 

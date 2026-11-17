@@ -47,8 +47,23 @@
 .profile .profile_inner span {
     font-size: 1.05rem;
     color: var(--secondary);
-    max-width: 580px;
+    max-width: 640px;
     line-height: 1.5;
+}
+
+.profile .profile_inner .profile-status {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-top: -0.35rem;
+}
+
+.profile .profile_inner .profile-bio {
+    font-size: 0.98rem;
+    color: var(--content);
+    max-width: 640px;
+    line-height: 1.65;
+    margin: 0.25rem 0;
 }
 
 /* Button enhancements */
